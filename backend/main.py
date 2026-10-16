@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query
@@ -90,7 +90,7 @@ async def create_task(request: TaskCreate):
             ),
         ) from exc
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     task = {
         "id": str(uuid4()),
         "session_id": request.session_id or str(uuid4()),
