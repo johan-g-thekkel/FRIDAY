@@ -106,7 +106,7 @@ async def create_task(request: TaskCreate):
     }
     insert_task({
         **task,
-        "created_at": now.isoformat() + "Z",
+        "created_at": now.isoformat(),
     })
     return TaskResponse(**task)
 
