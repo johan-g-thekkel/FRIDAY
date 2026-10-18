@@ -7,7 +7,9 @@ TEDDY is a model- and agent-extensible personal AI operator. It must not be hard
 ## Keep these concepts separate
 
 - **Model providers** run inference: for example, NVIDIA Nemotron through a supported NVIDIA or Nebius endpoint, and other model APIs the user configures.
-- **Agent runtimes** can plan and use tools over multiple steps: Hermes Agent, OpenAI Codex, and Claude Code. These are not interchangeable with a plain chat-completions model. They need their own adapter, runtime installation, login/credentials, and policy handling.
+- **Agent runtimes** can plan and use tools over multiple steps: Hermes Agent, OpenAI Codex, Claude Code, and future compatible agents. These are not interchangeable with a plain chat-completions model. They need their own adapter, runtime installation, login/credentials, and policy handling.
+- **Premium reasoning route**: Claude Fable 5.1 is a backend-only hosted model used selectively for long-horizon/high-complexity planning. It is not a UI library and is disabled by default.
+- **Compact local tool-call route**: Needle 3 can help with narrow structured tool-selection/extraction tasks; it is not intended to replace a general reasoning model.
 - **Skills** are user-supplied instructions and supporting files that describe repeatable capabilities. A skill may be available to an agent only after it is indexed and approved for use. Uploading a skill must never execute it.
 - **Tools/integrations** are external capabilities such as GitHub, browser automation, email, messaging, MQTT/Blynk, or Home Assistant. They need their own connector, permissions, and verification.
 
@@ -20,7 +22,8 @@ TEDDY is a model- and agent-extensible personal AI operator. It must not be hard
 5. **Skills registry** — store uploaded skills with an ID, name, description, source, version/hash, trust state, permitted tools, and compatible runtimes. Parse and preview first; quarantine unknown formats and reject path traversal or oversized uploads. Never run scripts simply because they came inside a skill package.
 6. **Policy gate** — read-only by default. File writes, command execution, network access, messages, deployments, purchases, and physical IoT actions must be scoped, logged, and approved according to risk.
 7. **Isolated workers** — run coding agents and tools outside the web request process, in a per-task workspace with timeouts, output limits, cancellation, and an audit trail.
-8. **Verification loop** — plan → execute in a sandbox → collect test/output evidence → diagnose → bounded retry → summarize. Retries are limited; side effects require separate authorization.
+8. **tmux process supervision** — optionally use tmux for long-running development/agent worker sessions and readable logs. tmux is process/session management, not a sandbox or security boundary, and a stopped Codespace/container still stops its processes.
+9. **Verification loop** — plan → execute in a sandbox → collect test/output evidence → diagnose → bounded retry → summarize. Retries are limited; side effects require separate authorization.
 
 ## Initial route catalog
 
@@ -28,10 +31,17 @@ TEDDY is a model- and agent-extensible personal AI operator. It must not be hard
 |---|---|---|---|
 | Nebius Token Factory | Model API | OpenAI-compatible provider adapter; use exact model ID from the user's account | Optional; not connected until configured |
 | NVIDIA Nemotron | Model family | Use a supported endpoint such as Token Factory or NVIDIA NIM; select an available Nemotron model ID | Not connected until configured |
+| Claude Fable 5.1 | Hosted reasoning model | Anthropic API adapter; use only for selected complex tasks with input/output caps and an approximate cost guard | Implemented as opt-in planning route; disabled until configured |
+| Nex-N2.5 | Agentic model family | Integrate through a verified hosted endpoint or compatible runtime; pin the exact variant and ID | Adapter pending; no weights/source archive received |
+| Needle 3 | Compact structured tool-call model | Use the official package/runner and schema-limited tool proposals, with telemetry disabled and policy validation | Source reviewed; weights/engine and runtime installation remain pending |
 | Hermes Agent | Agent runtime / orchestrator | Controlled worker adapter; can route to multiple configured providers | Not installed/connected until checked |
 | OpenAI Codex | Coding-agent runtime | Supported Codex CLI/SDK adapter with sandbox and approvals | Not installed/connected until checked |
 | Claude Code | Coding-agent runtime | Supported Claude Code CLI/SDK adapter with its own authentication | Not installed/connected until checked |
-| User-uploaded skills | Capability definitions | Import, validate, preview, version, and explicitly enable | Awaiting user files |
+| tmux | Worker process/session manager | Development launcher in scripts/tmux-dev.sh; separate task sessions and logs in future | Launcher committed; tmux must be installed locally |
+| Tesseract OCR | Utility | Install the OCR binary and language data; invoke through a constrained OCR adapter | Source archive reviewed; not built/installed by TEDDY |
+| Tesseract AI video editor | Video-editing tool | Separate adapter once the correct project/package is identified | Awaiting correct source; not the OCR ZIP |
+| Blynk / IoT | Device integration | Separate allow-listed adapter, state verification, logs, and approval for physical actions | Awaiting user library |
+| User-uploaded skills | Capability definitions | Import, validate, preview, version, and explicitly enable | Awaiting skill archives |
 
 This is an extensible route catalog, not a claim that every integration is already working. The status API and UI must mark each route as **connected**, **needs setup**, **not installed**, **unavailable**, or **planned**, based on actual checks.
 
@@ -46,10 +56,12 @@ This is an extensible route catalog, not a claim that every integration is alrea
 ## Delivery order
 
 - **Phase 1:** Working backend and command-center UI; status and task history; real, explicitly labelled local fallback.
-- **Phase 2:** Configure and verify one real inference endpoint (Nemotron through an available NVIDIA/Nebius route), then add provider selection and robust error reporting.
-- **Phase 3:** Add agent adapters one by one, starting with the runtime that is available in the Codespace and has an authorized login. Test each adapter independently before routing user tasks to it.
-- **Phase 4:** Import the user's skill files, inspect their formats, build a safe skills index/preview and compatibility matching.
-- **Phase 5:** Add tools and the bounded, sandboxed coding/verification loop. Keep external side effects approval-gated.
+- **Phase 2:** Configure and verify one real inference endpoint (Nemotron through an available NVIDIA/Nebius route), then test the optional Fable route using a clearly complex prompt while keeping it budget-gated.
+- **Phase 3:** Install/check tmux and one available agent runtime; implement the first supervised worker adapter with cancellation and bounded output.
+- **Phase 4:** Add Needle 3 for a narrow, low-cost structured tool-call task after retrieving the correct weights/engine and checking telemetry/privacy.
+- **Phase 5:** Add agent adapters one by one, starting with the runtime that is available in the Codespace and has an authorized login. Test each adapter independently before routing user tasks to it.
+- **Phase 6:** Import the user's skill files, inspect their formats, build a safe skills index/preview and compatibility matching.
+- **Phase 7:** Add tools and the bounded, sandboxed coding/verification loop. Keep external side effects approval-gated.
 
 ## Requirements before enabling an adapter
 
