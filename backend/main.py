@@ -92,8 +92,8 @@ async def create_task(request: TaskCreate):
         raise HTTPException(
             status_code=502,
             detail=(
-                "Nebius Token Factory request failed. Check the configured "
-                "API key, model ID, and endpoint URL."
+                "Model-provider request failed. Check the configured "
+                "provider key, model ID, and endpoint URL."
             ),
         ) from exc
 
