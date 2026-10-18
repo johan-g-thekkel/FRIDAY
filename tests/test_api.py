@@ -10,6 +10,8 @@ def _client_for_test(tmp_path: Path):
     os.environ["SQLITE_PATH"] = str(tmp_path / "teddy-test.db")
     os.environ.pop("NEBIUS_API_KEY", None)
     os.environ.pop("NEBIUS_MODEL", None)
+    os.environ.pop("ANTHROPIC_API_KEY", None)
+    os.environ["CLAUDE_FABLE_ENABLED"] = "false"
     get_settings.cache_clear()
 
     # Import after environment is set so module-level configuration is fresh.
@@ -72,3 +74,37 @@ def test_integrations_endpoint_reports_status(tmp_path):
             "api_key" not in item and "token" not in item
             for item in items
         )
+
+
+def test_claude_fable_route_is_opt_in_and_selective():
+    from backend.model_router import _requires_claude_fable
+    from backend.settings import Settings
+
+    disabled = Settings(
+        claude_fable_enabled=False,
+        anthropic_api_key="test-key",
+    )
+    assert not _requires_claude_fable(
+        "Design a multi-agent system architecture for a coding workflow.",
+        disabled,
+    )
+
+    enabled = Settings(
+        claude_fable_enabled=True,
+        anthropic_api_key="test-key",
+    )
+    assert _requires_claude_fable(
+        "Design the system architecture for a multi-agent coding workflow.",
+        enabled,
+    )
+    assert not _requires_claude_fable("What is 2 + 2?", enabled)
+
+    over_budget = Settings(
+        claude_fable_enabled=True,
+        anthropic_api_key="test-key",
+        claude_fable_max_estimated_cost_usd=0.000001,
+    )
+    assert not _requires_claude_fable(
+        "Design the system architecture for a multi-agent coding workflow.",
+        over_budget,
+    )
