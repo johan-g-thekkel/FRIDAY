@@ -46,3 +46,29 @@ def test_blank_prompt_is_rejected(tmp_path):
     with _client_for_test(tmp_path) as client:
         response = client.post("/api/v1/tasks", json={"prompt": "   "})
         assert response.status_code == 422
+
+
+
+def test_integrations_endpoint_reports_status(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api/v1/integrations")
+        assert response.status_code == 200
+
+        items = response.json()["integrations"]
+        by_id = {item["id"]: item for item in items}
+        assert {
+            "local_fallback",
+            "claude_fable_5_1",
+            "nex_n2_5",
+            "needle_3",
+            "tmux",
+            "tesseract_ocr",
+            "tesseract_video_editor",
+            "blynk",
+            "user_skills",
+        }.issubset(by_id.keys())
+        assert all(item.get("status") for item in items)
+        assert all(
+            "api_key" not in item and "token" not in item
+            for item in items
+        )
