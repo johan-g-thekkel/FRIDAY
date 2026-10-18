@@ -2,6 +2,7 @@ import json
 import re
 from typing import Any
 
+from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
 from backend.settings import get_settings
