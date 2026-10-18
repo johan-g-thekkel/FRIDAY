@@ -7,7 +7,6 @@ not execute agent CLIs or imported skill code.
 from __future__ import annotations
 
 import importlib.util
-import os
 import shutil
 from typing import Any
 
@@ -54,12 +53,14 @@ def list_integrations() -> list[dict[str, Any]]:
             "name": "Claude Fable 5.1",
             "kind": "model_provider",
             "status": (
-                "adapter_pending_credential_present"
-                if os.getenv("ANTHROPIC_API_KEY")
-                else "adapter_pending"
+                "configured_not_tested"
+                if settings.claude_fable_ready
+                else "disabled_by_default"
+                if settings.anthropic_api_key
+                else "needs_setup_disabled_by_default"
             ),
             "purpose": "Selective high-effort reasoning and long-horizon tasks",
-            "details": "Not part of the UI; adapter and explicit cost/routing policy are still required.",
+            "details": "Backend-only route; it remains off unless CLAUDE_FABLE_ENABLED=true and an API key is configured.",
         },
         {
             "id": "nex_n2_5",
@@ -79,7 +80,7 @@ def list_integrations() -> list[dict[str, Any]]:
                 else "source_received_package_not_installed"
             ),
             "purpose": "Small structured tool selection, extraction, and local routing",
-            "details": "The uploaded ZIP contains source code but no .cact or safetensors weights.",
+            "details": "Needle source was reviewed separately; install the package and obtain matching model weights/engine before use.",
         },
         {
             "id": "hermes_agent",
@@ -123,7 +124,7 @@ def list_integrations() -> list[dict[str, Any]]:
                 else "source_received_build_required"
             ),
             "purpose": "Text extraction from images, documents, and selected video frames",
-            "details": "The uploaded ZIP is the OCR engine, not a video editor.",
+            "details": "Tesseract OCR source was reviewed separately; build/install the OCR engine and language data before use. It is not the video editor.",
         },
         {
             "id": "tesseract_video_editor",
