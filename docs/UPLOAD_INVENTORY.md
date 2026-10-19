@@ -131,6 +131,14 @@ No Nex-N2.5 source or model weights were found in the uploaded bundle. This rema
 
 Reference: https://github.com/nex-agi/Nex-N2.5
 
+## Named OpenAI-compatible profiles
+
+TEDDY can load up to 30 additional model profiles from local `data/model-profiles.json`, set by `MODEL_PROFILES_PATH`. Each profile names an OpenAI-compatible base URL, exact model ID, environment-variable name for its API key, priority, capability metadata, and enabled flag. API secrets themselves stay in environment variables and are not returned by `GET /api/v1/models` or `GET /api/v1/integrations`.
+
+Profiles are validated and explicit routes are rejected if disabled or missing credentials. Plain HTTP URLs are permitted only for loopback development endpoints; external profiles must use HTTPS. This adapter currently supports text chat-completions only, not multimodal file/vision payloads or agent-runner tools.
+
+Template: `config/model-profiles.example.json`.
+
 ## Count of candidate skill definitions
 
 The current archives include **316 named candidate skills before broader cross-source review**:
