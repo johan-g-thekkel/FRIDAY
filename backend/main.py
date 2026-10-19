@@ -7,7 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import get_task, init_db, insert_task, list_tasks
 from backend.integration_registry import list_integrations
-from backend.model_router import create_plan, ModelProviderUnavailableForSkills
+from backend.model_router import (
+    create_plan,
+    ModelProviderUnavailableForSkills,
+    ModelRouteUnavailable,
+)
 from backend.skill_registry import list_skill_metadata, SkillNotApprovedError
 from backend.schemas import BackendStatus, TaskCreate, TaskResponse
 from backend.settings import get_settings
@@ -74,6 +78,43 @@ async def backend_status():
     )
 
 
+@app.get("/api/v1/models", tags=["models"])
+async def model_routes():
+    """List model routes this backend can actually select today."""
+    current = get_settings()
+    return {
+        "default_route": "auto",
+        "routes": [
+            {
+                "id": "auto",
+                "name": "Automatic",
+                "available": True,
+                "model": None,
+                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius model or the deterministic local fallback.",
+            },
+            {
+                "id": "nebius",
+                "name": (
+                    "NVIDIA Nemotron via Nebius"
+                    if current.nebius_model and "nemotron" in current.nebius_model.casefold()
+                    else "Nebius Token Factory"
+                ),
+                "available": current.nebius_ready,
+                "model": current.nebius_model if current.nebius_ready else None,
+                "details": "Uses the exact NEBIUS_MODEL value. This may be a Nemotron model if that exact ID is available in the user's Token Factory account.",
+            },
+            {
+                "id": "claude_fable",
+                "name": "Claude Fable 5.1",
+                "available": current.claude_fable_ready,
+                "model": current.claude_fable_model if current.claude_fable_ready else None,
+                "details": "Optional premium reasoning route; it is disabled by default and remains behind a prompt-size and approximate-cost guard.",
+            },
+        ],
+        "note": "Hermes, Codex, Claude Code, Nex-N2.5, Needle 3, and GLM-V require separate runtime/provider adapters and are not yet selectable from this model-route endpoint.",
+    }
+
+
 @app.get("/api/v1/integrations", tags=["system"])
 async def integration_status():
     """Report integration readiness without exposing credentials or running tools."""
@@ -93,9 +134,15 @@ async def create_task(request: TaskCreate):
         raise HTTPException(status_code=422, detail="Prompt cannot be blank.")
 
     try:
-        plan = await create_plan(prompt, requested_skill_ids=request.skill_ids)
+        plan = await create_plan(
+            prompt,
+            requested_skill_ids=request.skill_ids,
+            requested_route=request.model_route,
+        )
     except SkillNotApprovedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ModelRouteUnavailable as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ModelProviderUnavailableForSkills as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
