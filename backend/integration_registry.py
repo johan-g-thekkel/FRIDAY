@@ -114,7 +114,7 @@ def list_integrations() -> list[dict[str, Any]]:
             "kind": "coding_agent",
             "status": _cli_status("codex"),
             "purpose": "Supervised coding, tests, and bounded repair loops",
-            "details": "Requires separate workspace isolation, authentication, and approval checks.",
+            "details": "If installed, TEDDY offers explicit coding-task dispatch through the Codex CLI in a detached Git worktree with workspace-write sandbox and network disabled. Authentication is still the operator’s responsibility; CLI exit success is not independent test verification.",
         },
         {
             "id": "claude_code",

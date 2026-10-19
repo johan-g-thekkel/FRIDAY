@@ -56,11 +56,9 @@
   }
   function statusClass(status) {
     const s = String(status || "").toLowerCase();
-    if (["failed", "quarantined", "changed_since_review"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "bad";
-    if (s === "completed" || s === "available" || ["configured", "ready", "enabled_reviewed", "installed_needs_verification", "runtime_detected_needs_test", "installed_needs_test"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "good";
-    if (s === "running") return "warn";
-    if (["needs_setup", "pending", "disabled", "source_received", "not_installed", "adapter_pending", "awaiting", "package_not_installed", "evaluation_required", "auth_and_docs_verification_pending"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "warn";
-    if (["quarantined", "failed", "changed_since_review"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "bad";
+    if (["failed", "quarantined", "changed_since_review", "not_installed", "awaiting_correct_source"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "bad";
+    if (s === "completed" || s === "available" || s === "enabled_reviewed" || s === "connected" || s === "ready") return "good";
+    if (s === "running" || ["needs_setup", "pending", "disabled", "configured_not_tested", "installed_needs_verification", "runtime_detected_needs_test", "installed_needs_test", "source_received", "not_installed", "adapter_pending", "awaiting", "package_not_installed", "evaluation_required", "auth_and_docs_verification_pending", "firmware_library_received_backend_adapter_pending", "source_and_skills_received_weights_not_in_archive", "metadata_only_inventory_available", "disabled_by_default"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "warn";
     return "neutral";
   }
   function statusPill(status) {
@@ -126,7 +124,7 @@
     $("#stat-tasks").textContent = String(state.tasks.length);
     const configured = state.models.routes.filter(function (route) { return route.id !== "auto" && route.available; });
     $("#stat-models").textContent = String(configured.length);
-    $("#stat-models-note").textContent = configured.length ? configured.length + " configured route" + (configured.length === 1 ? "" : "s") : "No cloud model configured yet";
+    $("#stat-models-note").textContent = configured.length ? "Configured, not health-checked" : "No cloud model configured yet";
     const ready = state.integrations.filter(function (item) { return ["available", "configured", "connected", "ready"].includes(String(item.status).toLowerCase()); });
     $("#stat-runtimes").textContent = String(ready.length);
     $("#stat-skills").textContent = String(state.skills.count || 0);
@@ -163,7 +161,7 @@
   function renderOverviewModels() {
     const items = state.models.routes.filter(function (route) { return route.id !== "auto"; }).slice(0, 4);
     $("#overview-models").innerHTML = items.length ? items.map(function (route) {
-      return '<div class="compact-row"><div class="compact-icon">⌘</div><div class="compact-main"><strong>' + escapeHtml(route.name) + '</strong><small>' + escapeHtml(route.model || route.id) + '</small></div>' + statusPill(route.available ? "available" : "needs_setup") + '</div>';
+      return '<div class="compact-row"><div class="compact-icon">⌘</div><div class="compact-main"><strong>' + escapeHtml(route.name) + '</strong><small>' + escapeHtml(route.model || route.id) + '</small></div>' + statusPill(route.available ? "configured_not_tested" : "needs_setup") + '</div>';
     }).join("") : '<div class="empty-state compact"><strong>No model routes returned</strong><p>Check the backend model endpoint.</p></div>';
   }
   function renderOverviewIntegrations() {
@@ -236,7 +234,7 @@
     $("#default-route-description").textContent = auto ? auto.details : "Uses whichever configured model provider is available under the backend's routing policy.";
     $("#model-grid").innerHTML = routes.map(function (route) {
       const isAuto = route.id === "auto";
-      return '<article class="model-card"><div class="model-card-top"><div class="model-logo">' + (isAuto ? "✳" : "⌘") + '</div><div><h3>' + escapeHtml(route.name) + '</h3><div class="model-id">' + escapeHtml(route.model || route.id) + '</div></div>' + statusPill(route.available ? "available" : "needs_setup") + '</div><p>' + escapeHtml(route.details || "No description provided by backend.") + '</p><div class="model-card-footer"><span class="card-foot-label">' + (isAuto ? "Backend policy route" : "Explicit selection") + '</span><span class="card-foot-label">' + (route.available ? "Selectable" : "Setup required") + '</span></div></article>';
+      return '<article class="model-card"><div class="model-card-top"><div class="model-logo">' + (isAuto ? "✳" : "⌘") + '</div><div><h3>' + escapeHtml(route.name) + '</h3><div class="model-id">' + escapeHtml(route.model || route.id) + '</div></div>' + statusPill(route.available ? "configured_not_tested" : "needs_setup") + '</div><p>' + escapeHtml(route.details || "No description provided by backend.") + '</p><div class="model-card-footer"><span class="card-foot-label">' + (isAuto ? "Backend policy route" : "Explicit selection") + '</span><span class="card-foot-label">' + (route.available ? "Selectable" : "Setup required") + '</span></div></article>';
     }).join("") || '<div class="empty-state"><strong>No model routes returned</strong></div>';
   }
   function renderIntegrationSummary() {
