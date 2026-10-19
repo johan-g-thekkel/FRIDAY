@@ -210,3 +210,25 @@ def test_approved_skill_context_is_selected_and_hash_pinned(tmp_path):
             get_enabled_skill_context(
                 "Add Python unit tests", requested_skill_ids=[skill["id"]]
             )
+
+
+def test_explicit_unapproved_skill_is_rejected_by_api(tmp_path):
+    skill_dir = tmp_path / "skills" / "ECC" / "unsafe-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: unsafe-skill\ndescription: Test-only skill.\n---\n"
+        "This file is just test guidance.\n",
+        encoding="utf-8",
+    )
+    with _client_for_test(tmp_path) as client:
+        inventory = client.get("/api/v1/skills").json()
+        skill_id = inventory["skills"][0]["id"]
+        response = client.post(
+            "/api/v1/tasks",
+            json={
+                "prompt": "Add unit tests to my Python project",
+                "skill_ids": [skill_id],
+            },
+        )
+        assert response.status_code == 422
+        assert "not approved" in response.json()["detail"].lower()
