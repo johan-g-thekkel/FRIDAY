@@ -382,7 +382,7 @@
       memory: $("#bot-memory").value.trim(),
       runtime: $("#bot-runtime").value,
       default_model_route: $("#bot-default-route").value || "auto",
-      skill_ids: $("#bot-skill-picker input[type=checkbox]:checked").map(function (input) { return input.value; }),
+      skill_ids: $$("#bot-skill-picker input[type=checkbox]:checked").map(function (input) { return input.value; }),
       enabled: $("#bot-enabled").checked
     };
     const button = $("#save-bot-button");
