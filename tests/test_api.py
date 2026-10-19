@@ -10,6 +10,7 @@ def _client_for_test(tmp_path: Path):
     os.environ["SQLITE_PATH"] = str(tmp_path / "teddy-test.db")
     os.environ["SKILLS_ROOT"] = str(tmp_path / "skills")
     os.environ["SKILLS_POLICY_PATH"] = str(tmp_path / "data" / "skills-policy.json")
+    os.environ["MODEL_PROFILES_PATH"] = str(tmp_path / "data" / "model-profiles.json")
     os.environ.pop("NEBIUS_API_KEY", None)
     os.environ.pop("NEBIUS_MODEL", None)
     os.environ.pop("NVIDIA_API_KEY", None)
@@ -151,6 +152,7 @@ def test_skill_inventory_reads_metadata_and_keeps_skills_disabled(tmp_path):
         skill = body["skills"][0]
         assert skill["name"] == "verification-loop"
         assert skill["source"] == "sample-source"
+        assert "text-model" in skill["compatible_runtimes"]
         assert skill["status"] == "disabled_pending_review"
         assert skill["description"].startswith("Verify task output")
         assert body["note"].startswith("Metadata only")
