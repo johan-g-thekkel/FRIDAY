@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     openai_compatible_base_url: str | None = None
     openai_compatible_model: str | None = None
     openai_compatible_name: str = "Custom OpenAI-compatible model"
+    # Local JSON file with additional named OpenAI-compatible model profiles.
+    model_profiles_path: str = "./data/model-profiles.json"
     # Fable is opt-in to avoid unexpected paid inference calls.
     anthropic_api_key: str | None = None
     claude_fable_model: str = "claude-fable-5-1"
