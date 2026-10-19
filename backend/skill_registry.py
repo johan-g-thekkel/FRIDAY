@@ -90,6 +90,17 @@ def _load_policy(policy_path: Path) -> dict[str, Any]:
         return {"version": 1, "skills": {}}
 
 
+def _compatible_runtimes(source: str) -> list[str]:
+    """Describe intended runtime compatibility without implying runtime readiness."""
+    compatibility = {
+        "ECC": ["text-model", "hermes_agent", "codex_cli", "claude_code"],
+        "Astra": ["astra_runtime"],
+        "GLM-V": ["glm_v"],
+        "REA": ["rea_mcp"],
+    }
+    return compatibility.get(source, ["text-model"])
+
+
 def _iter_skill_files(root: Path):
     if not root.exists() or not root.is_dir():
         return
@@ -125,6 +136,7 @@ def _iter_skill_files(root: Path):
             "name": name or path.parent.name,
             "description": description or "No description supplied in skill metadata.",
             "source": parts[0] if len(parts) > 1 else "imported",
+            "compatible_runtimes": _compatible_runtimes(parts[0] if len(parts) > 1 else "imported"),
             "path": relative,
             "content_hash": digest,
             "_text": text,
@@ -165,7 +177,7 @@ def list_skill_metadata() -> dict[str, Any]:
             "path": item["path"],
             "content_hash": item["content_hash"][:12],
             "status": status,
-            "compatible_runtimes": [],
+            "compatible_runtimes": item["compatible_runtimes"],
             "required_tools": [],
         })
 
