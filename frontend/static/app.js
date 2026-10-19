@@ -11,6 +11,7 @@
     skills: { skills: [], count: 0 },
     tasks: [],
     selectedTaskId: null,
+    taskChanges: null,
     toastTimer: null,
     refreshTimer: null
   };
@@ -206,7 +207,16 @@
     } else if (task.status === "running") {
       workerSection = '<div class="worker-status"><span class="activity-live-dot"></span><strong>Agent running</strong><span>Refreshing status automatically</span></div>';
     } else if (task.status === "completed" || task.status === "failed") {
-      workerSection = '<div class="worker-result"><div class="detail-plan-title">AGENT RESULT</div><pre>' + escapeHtml(task.result_text || "No final message was saved.") + '</pre>' + (task.workspace_path ? '<div class="workspace-path"><span>WORKTREE</span><code>' + escapeHtml(task.workspace_path) + '</code></div>' : '') + '</div>';
+      const savedChanges = state.taskChanges && state.taskChanges.task_id === task.id ? state.taskChanges : null;
+      const filesMarkup = savedChanges && savedChanges.files.length
+        ? '<ul class="changed-file-list">' + savedChanges.files.map(function (file) { return '<li><code>' + escapeHtml(file) + '</code></li>'; }).join("") + '</ul>'
+        : (savedChanges ? '<p class="diff-empty">Git reports no changed files.</p>' : '');
+      const diffMarkup = savedChanges
+        ? '<div class="task-diff-panel"><div class="task-diff-heading"><strong>WORKTREE DIFF</strong><span>' + (savedChanges.truncated ? 'OUTPUT TRUNCATED' : 'READ ONLY') + '</span></div>' + filesMarkup + '<pre>' + escapeHtml(savedChanges.diff || "(No tracked or text-file changes to display.)") + '</pre>' + (savedChanges.truncated ? '<p class="diff-empty">The diff reached the display-size limit; inspect the worktree in the Codespace for the full output.</p>' : '') + '<p class="diff-empty">' + escapeHtml(savedChanges.note || '') + '</p></div>'
+        : '';
+      workerSection = '<div class="worker-result"><div class="detail-plan-title">AGENT RESULT</div><pre>' + escapeHtml(task.result_text || "No final message was saved.") + '</pre>' +
+        (task.workspace_path ? '<div class="workspace-path"><span>WORKTREE</span><code>' + escapeHtml(task.workspace_path) + '</code></div><button type="button" class="secondary-button inspect-changes-button" data-task-action="inspect-changes" data-task-id="' + escapeHtml(task.id) + '">Inspect changed files & diff ↗</button>' : '') +
+        '</div>' + diffMarkup;
     }
     target.innerHTML = '<div class="detail-kicker">TASK / ' + escapeHtml(String(task.id).slice(0, 8).toUpperCase()) + '</div>' +
       '<div class="detail-prompt">' + escapeHtml(taskTitle(task)) + '</div>' +
@@ -669,6 +679,19 @@
       button.innerHTML = original;
     }
   }
+  async function inspectTaskChanges(taskId) {
+    if (!taskId) return;
+    try {
+      const changes = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/changes");
+      state.selectedTaskId = taskId;
+      state.taskChanges = changes;
+      if (state.view !== "tasks") setView("tasks");
+      renderAllTasks();
+      toast("Read-only diff loaded. Review the changes before applying them.");
+    } catch (error) {
+      toast("Could not inspect worktree: " + error.message, true);
+    }
+  }
   async function runCodingTask(taskId, button) {
     if (!taskId || !button) return;
     const original = button.innerHTML;
@@ -719,9 +742,17 @@
         runCodingTask(button.getAttribute("data-task-id"), button);
         return;
       }
+      const taskAction = event.target.closest("[data-task-action]");
+      if (taskAction) {
+        if (taskAction.getAttribute("data-task-action") === "inspect-changes") {
+          inspectTaskChanges(taskAction.getAttribute("data-task-id"));
+        }
+        return;
+      }
       const taskButton = event.target.closest("[data-task-id]");
       if (taskButton) {
         const taskId = taskButton.getAttribute("data-task-id");
+        if (state.selectedTaskId !== taskId) state.taskChanges = null;
         state.selectedTaskId = taskId;
         if (state.view !== "tasks") setView("tasks");
         renderAllTasks();
