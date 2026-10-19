@@ -424,32 +424,26 @@ def test_interrupted_agent_tasks_are_recovered_on_restart(tmp_path):
     assert any("restarted" in line.lower() for line in saved["execution_log"])
 
  
-def test_requested_skill_ids_are_persisted_with_task(tmp_path):
-    import hashlib
-    import json
-    skill_dir = tmp_path / "skills" / "ECC" / "verification-loop"
-    skill_dir.mkdir(parents=True)
-    skill_file = skill_dir / "SKILL.md"
-    skill_file.write_text(
-        "---\nname: verification-loop\ndescription: Verify code changes.\n---\nRun tests.\n",
-        encoding="utf-8",
-    )
-    skill_id = hashlib.sha256("ECC/verification-loop/SKILL.md".encode()).hexdigest()[:16]
-    os.environ["NEBIUS_API_KEY"] = "test-key"
-    os.environ["NEBIUS_MODEL"] = "test-model"
-    # Avoid real provider calls; the persisted ID is independent of planner internals.
+ 
+def test_requested_skill_ids_are_persisted_with_task(tmp_path, monkeypatch):
     import backend.main as main_module
+
     async def fake_plan(prompt, requested_skill_ids=None, requested_route="auto"):
         return {
             "category": "coding", "provider": "test-provider", "model": "test-model",
             "risk": "medium", "approval_required": False, "plan": ["Implement"],
-            "skills_used": ["verification-loop"],
+            "skills_used": ["verification-loop"] if requested_skill_ids else [],
         }
-    from backend.skill_registry import SkillNotApprovedError
-    # The API's skill registry requires a local hash approval, so this request must be rejected.
+
+    monkeypatch.setattr(main_module, "create_plan", fake_plan)
+    requested_id = "0123456789abcdef"
     with _client_for_test(tmp_path) as client:
         response = client.post(
             "/api/v1/tasks",
-            json={"prompt": "Add code tests", "skill_ids": [skill_id]},
+            json={"prompt": "Add code tests", "skill_ids": [requested_id]},
         )
-        assert response.status_code in {409, 422}
+        assert response.status_code == 200
+        body = response.json()
+        assert body["skill_ids"] == [requested_id]
+        fetched = client.get(f"/api/v1/tasks/{body['id']}").json()
+        assert fetched["skill_ids"] == [requested_id]
