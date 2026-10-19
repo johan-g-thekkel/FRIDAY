@@ -265,7 +265,7 @@ async def create_plan(
         # that local deterministic fallback has used the instructions.
         get_enabled_skill_context(prompt, requested_skill_ids)
         raise ModelProviderUnavailableForSkills(
-            "Approved skills require a configured model provider. Configure Nebius or explicitly enable Claude Fable before requesting skill use."
+            "Approved skills require a configured model provider. Configure Nebius Token Factory or NVIDIA NIM, or explicitly enable Claude Fable before requesting skill use."
         )
 
     skill_names = [item["name"] for item in selected_skills]
