@@ -10,6 +10,10 @@ TEDDY is a model- and agent-extensible personal AI operator. It must not be hard
 - **Agent runtimes** can plan and use tools over multiple steps: Hermes Agent, OpenAI Codex, Claude Code, and future compatible agents. These are not interchangeable with a plain chat-completions model. They need their own adapter, runtime installation, login/credentials, and policy handling.
 - **Premium reasoning route**: Claude Fable 5.1 is a backend-only hosted model used selectively for long-horizon/high-complexity planning. It is not a UI library and is disabled by default.
 - **Compact local tool-call route**: Needle 3 can help with narrow structured tool-selection/extraction tasks; it is not intended to replace a general reasoning model.
+- **Vision route**: GLM-V may handle image/video/document understanding and visual grounding through a verified endpoint/runtime; no weights were included in the uploaded archive.
+- **Realtime media route**: LiveKit Agents can provide a separate service for streaming voice/video and STT/LLM/TTS coordination; it is not the command-center frontend.
+- **Alternative worker runtime**: Astra can be evaluated as a separate long-running, evidence-backed worker, but it overlaps with TEDDY's own orchestrator and execution layer.
+- **MCP integrations**: REA is a specialized, optional reverse-engineering MCP tool for owned/authorized targets; VULK is an external app-builder connector that needs current auth-contract verification and approval gates.
 - **Skills** are user-supplied instructions and supporting files that describe repeatable capabilities. A skill may be available to an agent only after it is indexed and approved for use. Uploading a skill must never execute it.
 - **Tools/integrations** are external capabilities such as GitHub, browser automation, email, messaging, MQTT/Blynk, or Home Assistant. They need their own connector, permissions, and verification.
 
@@ -38,12 +42,21 @@ TEDDY is a model- and agent-extensible personal AI operator. It must not be hard
 | OpenAI Codex | Coding-agent runtime | Supported Codex CLI/SDK adapter with sandbox and approvals | Not installed/connected until checked |
 | Claude Code | Coding-agent runtime | Supported Claude Code CLI/SDK adapter with its own authentication | Not installed/connected until checked |
 | tmux | Worker process/session manager | Development launcher in scripts/tmux-dev.sh; separate task sessions and logs in future | Launcher committed; tmux must be installed locally |
-| Tesseract OCR | Utility | Install the OCR binary and language data; invoke through a constrained OCR adapter | Source archive reviewed; not built/installed by TEDDY |
-| Tesseract AI video editor | Video-editing tool | Separate adapter once the correct project/package is identified | Awaiting correct source; not the OCR ZIP |
-| Blynk / IoT | Device integration | Separate allow-listed adapter, state verification, logs, and approval for physical actions | Awaiting user library |
-| User-uploaded skills | Capability definitions | Import, validate, preview, version, and explicitly enable | Awaiting skill archives |
+| GLM-V | Vision-language model | Supported hosted endpoint or verified local runtime; load compatible skills for visual grounding/document work | Source + 10 skills received; model weights not in archive |
+| LiveKit Agents | Realtime voice/media agent SDK | Separate service using LiveKit server/cloud and provider credentials | Source received; SDK adapter and credentials pending |
+| Astra | Long-running agent runtime | Evaluate through separate Runner/runtime process with isolated workspaces and evidence logs | Apache-2.0 source received; build and security review pending |
+| REA MCP | Reverse-engineering tools | Optional MCP server for authorized app/binary analysis only | MIT source + 5 skills received; Node.js/target engine setup pending |
+| VULK MCP | External app-building connector | Use current official contract and scoped account auth; require approval for credit-consuming operations | MIT connector source received; auth/version verification pending |
+| Tesseract OCR | Utility | Install OCR binary and language data; invoke through a constrained OCR adapter | Source archive reviewed; not built/installed by TEDDY |
+| Tesseract AI video editor | Video-editing tool | Separate adapter once the correct project/package is identified | Awaiting correct source; ECC's video-editing skill is guidance only |
+| Blynk / IoT | Device integration | C++ library is firmware-side; TEDDY needs separate cloud/bridge adapter with state readback and action approvals | MIT Blynk v1.3.2 library received; backend adapter pending |
+| ECC skills | Capability definitions | Deduplicate the 292 core definitions, review dependencies, index metadata, then explicitly enable per agent | MIT archive received; not executed or enabled |
+| Astra / GLM-V / REA skills | Capability definitions | Source/compatibility metadata plus review; enable only per compatible runtime | 9 Astra, 10 GLM-V and 5 REA skill definitions found |
+| CL4R1T4S prompts | Untrusted reference data | Quarantine, read-only only, never use as system policy | AGPL-3.0 archive has prompt provenance/licensing risks and instruction-injection text |
 
 This is an extensible route catalog, not a claim that every integration is already working. The status API and UI must mark each route as **connected**, **needs setup**, **not installed**, **unavailable**, or **planned**, based on actual checks.
+
+The uploaded skill sources contain **316 named candidates** before deeper cross-source review: 292 core ECC skills, 9 Astra skills, 10 GLM-V skills, and 5 REA skills. ECC's 903 SKILL.md file paths include copies for agents, Kiro/Cursor, examples, and translated docs; do not count those copies as 903 unique skills.
 
 ## Routing rules
 
