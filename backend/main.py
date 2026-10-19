@@ -219,6 +219,7 @@ async def create_task(request: TaskCreate):
         "plan": plan["plan"],
         "created_at": now,
         "skills_used": plan.get("skills_used", []),
+        "skill_ids": request.skill_ids,
         "execution_mode": "plan_only",
         "agent_name": None,
         "workspace_path": None,

@@ -29,6 +29,7 @@ class TaskResponse(BaseModel):
     plan: list[str]
     created_at: datetime
     skills_used: list[str] = Field(default_factory=list)
+    skill_ids: list[str] = Field(default_factory=list)
     execution_mode: Literal["plan_only", "agent"] = "plan_only"
     agent_name: str | None = None
     workspace_path: str | None = None

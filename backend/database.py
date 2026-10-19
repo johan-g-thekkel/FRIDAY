@@ -30,7 +30,7 @@ def init_db() -> None:
                 status TEXT NOT NULL, category TEXT NOT NULL, provider TEXT NOT NULL,
                 model TEXT, risk TEXT NOT NULL, approval_required INTEGER NOT NULL,
                 plan_json TEXT NOT NULL, created_at TEXT NOT NULL,
-                skills_used_json TEXT NOT NULL DEFAULT '[]',
+                skills_used_json TEXT NOT NULL DEFAULT '[]', skill_ids_json TEXT NOT NULL DEFAULT '[]',
                 execution_mode TEXT NOT NULL DEFAULT 'plan_only', agent_name TEXT,
                 workspace_path TEXT, result_text TEXT,
                 execution_log_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT
@@ -40,6 +40,7 @@ def init_db() -> None:
         columns = {row["name"] for row in connection.execute("PRAGMA table_info(tasks)").fetchall()}
         migrations = {
             "skills_used_json": "TEXT NOT NULL DEFAULT '[]'",
+            "skill_ids_json": "TEXT NOT NULL DEFAULT '[]'",
             "execution_mode": "TEXT NOT NULL DEFAULT 'plan_only'",
             "agent_name": "TEXT",
             "workspace_path": "TEXT",
@@ -58,17 +59,17 @@ def insert_task(task: dict[str, Any]) -> None:
             """
             INSERT INTO tasks (
                 id, session_id, prompt, status, category, provider, model, risk,
-                approval_required, plan_json, created_at, skills_used_json,
+                approval_required, plan_json, created_at, skills_used_json, skill_ids_json,
                 execution_mode, agent_name, workspace_path, result_text,
                 execution_log_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task["id"], task["session_id"], task["prompt"], task["status"],
                 task["category"], task["provider"], task["model"], task["risk"],
                 int(task["approval_required"]), json.dumps(task["plan"]),
                 task["created_at"], json.dumps(task.get("skills_used", [])),
-                task.get("execution_mode", "plan_only"), task.get("agent_name"),
+                json.dumps(task.get("skill_ids", [])), task.get("execution_mode", "plan_only"), task.get("agent_name"),
                 task.get("workspace_path"), task.get("result_text"),
                 json.dumps(task.get("execution_log", [])), task.get("updated_at"),
             ),
@@ -138,6 +139,7 @@ def _row_to_task(row: sqlite3.Row) -> dict[str, Any]:
     task["approval_required"] = bool(task["approval_required"])
     task["plan"] = json.loads(task.pop("plan_json"))
     task["skills_used"] = json.loads(task.pop("skills_used_json", "[]") or "[]")
+    task["skill_ids"] = json.loads(task.pop("skill_ids_json", "[]") or "[]")
     task["execution_log"] = json.loads(task.pop("execution_log_json", "[]") or "[]")
     task.setdefault("execution_mode", "plan_only")
     task.setdefault("agent_name", None)
