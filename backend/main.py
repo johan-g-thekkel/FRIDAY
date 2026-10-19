@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.database import get_task, init_db, insert_task, list_tasks
 from backend.integration_registry import list_integrations
 from backend.skill_registry import list_skill_metadata
-from backend.model_router import create_plan
+from backend.model_router import create_plan, ModelProviderUnavailableForSkills
+from backend.skill_registry import SkillNotApprovedError
 from backend.schemas import BackendStatus, TaskCreate, TaskResponse
 from backend.settings import get_settings
 
@@ -93,7 +94,11 @@ async def create_task(request: TaskCreate):
         raise HTTPException(status_code=422, detail="Prompt cannot be blank.")
 
     try:
-        plan = await create_plan(prompt)
+        plan = await create_plan(prompt, requested_skill_ids=request.skill_ids)
+    except SkillNotApprovedError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ModelProviderUnavailableForSkills as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         # Avoid leaking credentials or provider response internals.
         raise HTTPException(
@@ -117,6 +122,7 @@ async def create_task(request: TaskCreate):
         "approval_required": plan["approval_required"],
         "plan": plan["plan"],
         "created_at": now,
+        "skills_used": plan.get("skills_used", []),
     }
     insert_task({
         **task,
