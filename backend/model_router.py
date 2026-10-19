@@ -13,6 +13,10 @@ class ModelProviderUnavailableForSkills(ValueError):
     """Raised when explicit skill use is requested without an inference provider."""
 
 
+class ModelRouteUnavailable(ValueError):
+    """Raised when a requested model route is not available or exceeds its guard."""
+
+
 SYSTEM_PROMPT = """
 You are TEDDY, a task-planning assistant. Return ONLY valid JSON with this schema:
 {
@@ -122,21 +126,33 @@ def _fallback_plan(prompt: str) -> dict[str, Any]:
     }
 
 
-def _requires_claude_fable(prompt: str, settings: Any, extra_context_chars: int = 0) -> bool:
-    """Use the premium reasoning route only when explicitly enabled and warranted."""
+def _claude_fable_budget_ok(
+    prompt: str,
+    settings: Any,
+    extra_context_chars: int = 0,
+) -> bool:
+    """Approximate cost/prompt guard; not a provider-enforced spending cap."""
     if not settings.claude_fable_ready:
         return False
     if len(prompt) > settings.claude_fable_max_prompt_chars:
         return False
-
-    # Approximate budget guard. Character/token ratios vary, so the output cap
-    # is also enforced; this is an estimate, not a billing guarantee.
-    estimated_input_tokens = (len(prompt) + len(SYSTEM_PROMPT) + extra_context_chars) / 3
+    estimated_input_tokens = (
+        len(prompt) + len(SYSTEM_PROMPT) + extra_context_chars
+    ) / 3
     estimated_cost = (
         estimated_input_tokens * 10
         + settings.claude_fable_max_output_tokens * 50
     ) / 1_000_000
-    if estimated_cost > settings.claude_fable_max_estimated_cost_usd:
+    return estimated_cost <= settings.claude_fable_max_estimated_cost_usd
+
+
+def _requires_claude_fable(
+    prompt: str,
+    settings: Any,
+    extra_context_chars: int = 0,
+) -> bool:
+    """Select the premium reasoning route only for complex tasks within budget."""
+    if not _claude_fable_budget_ok(prompt, settings, extra_context_chars):
         return False
 
     text = prompt.casefold()
@@ -219,8 +235,19 @@ def _build_user_message(prompt: str, skills: list[dict[str, str]]) -> str:
 async def create_plan(
     prompt: str,
     requested_skill_ids: list[str] | None = None,
+    requested_route: str = "auto",
 ) -> dict[str, Any]:
     settings = get_settings()
+    if requested_route not in {"auto", "nebius", "claude_fable"}:
+        raise ModelRouteUnavailable("Unknown model route. Choose auto, nebius, or claude_fable.")
+    if requested_route == "nebius" and not settings.nebius_ready:
+        raise ModelRouteUnavailable(
+            "Nebius route is not configured. Set NEBIUS_API_KEY and NEBIUS_MODEL."
+        )
+    if requested_route == "claude_fable" and not settings.claude_fable_ready:
+        raise ModelRouteUnavailable(
+            "Claude Fable is disabled or not configured. Set ANTHROPIC_API_KEY and explicitly enable CLAUDE_FABLE_ENABLED."
+        )
     provider_available = settings.nebius_ready or settings.claude_fable_ready
     selected_skills: list[dict[str, str]] = []
     if provider_available:
@@ -239,7 +266,17 @@ async def create_plan(
 
     # Premium Claude Fable is intentionally opt-in and only used for prompts
     # that match a narrow high-complexity/long-horizon signal set.
-    use_fable = _requires_claude_fable(prompt, settings, skill_context_chars)
+    if requested_route == "claude_fable":
+        if not _claude_fable_budget_ok(prompt, settings, skill_context_chars):
+            raise ModelRouteUnavailable(
+                "Claude Fable request exceeds the configured prompt or estimated-cost guard."
+            )
+        use_fable = True
+    elif requested_route == "nebius":
+        use_fable = False
+    else:
+        use_fable = _requires_claude_fable(prompt, settings, skill_context_chars)
+
     if requested_skill_ids and selected_skills and not settings.nebius_ready and not use_fable:
         raise ModelProviderUnavailableForSkills(
             "The selected skill needs a configured inference route. Claude Fable is only selected for complex tasks; configure Nebius or submit a complex reasoning task."
