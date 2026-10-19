@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -16,6 +18,126 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MAX_LOG_EVENTS = 80
 MAX_RESULT_CHARS = 8000
 MAX_STDERR_CHARS = 5000
+
+
+MAX_DIFF_BYTES = 180_000
+MAX_UNTRACKED_FILE_BYTES = 48_000
+
+
+class WorktreeInspectionError(RuntimeError):
+    """Raised when a task worktree cannot safely be inspected."""
+
+
+def inspect_codex_worktree_changes(task_id: str) -> dict[str, object]:
+    """Return bounded local diff/status for human review; no commands from the worktree are run."""
+    task = get_task(task_id)
+    if task is None:
+        raise WorktreeInspectionError("Task not found.")
+    if task.get("execution_mode") != "agent":
+        raise WorktreeInspectionError("This task has no agent worktree to inspect.")
+    if task.get("status") == "running":
+        raise WorktreeInspectionError("The agent is still running. Inspect changes after it finishes.")
+    if task.get("status") not in {"completed", "failed"}:
+        raise WorktreeInspectionError("This task is not in a completed or failed agent state.")
+
+    worktree_root = (REPO_ROOT / ".teddy-worktrees").resolve()
+    expected = (worktree_root / task_id).resolve()
+    try:
+        worktree = Path(str(task.get("workspace_path") or "")).resolve(strict=True)
+        worktree.relative_to(worktree_root)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise WorktreeInspectionError("The recorded worktree is missing or outside TEDDY's isolated worktree directory.") from exc
+    if worktree != expected or worktree.is_symlink() or not worktree.is_dir():
+        raise WorktreeInspectionError("The recorded worktree path failed the safety check.")
+
+    def run_git(args: list[str]) -> bytes:
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                cwd=str(worktree),
+                env=_restricted_child_environment(),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=12,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise WorktreeInspectionError("Git inspection failed or timed out.") from exc
+        if result.returncode != 0:
+            detail = result.stderr.decode("utf-8", errors="replace")[:300]
+            raise WorktreeInspectionError("Git inspection failed: " + detail.strip())
+        return result.stdout
+
+    status_bytes = run_git(["status", "--short", "--untracked-files=all"])
+    tracked_diff = run_git(["diff", "--no-ext-diff", "--no-color", "--unified=2", "--"])
+    untracked_bytes = run_git(["ls-files", "--others", "--exclude-standard", "-z"])
+    remaining = MAX_DIFF_BYTES
+    fragments: list[str] = []
+    truncated = False
+
+    tracked_text = tracked_diff.decode("utf-8", errors="replace")
+    encoded_tracked = tracked_text.encode("utf-8", errors="replace")
+    if len(encoded_tracked) > remaining:
+        fragments.append(encoded_tracked[:remaining].decode("utf-8", errors="replace"))
+        remaining = 0
+        truncated = True
+    else:
+        fragments.append(tracked_text)
+        remaining -= len(encoded_tracked)
+
+    untracked_names = [name for name in untracked_bytes.split(b"\0") if name][:200]
+    for raw_name in untracked_names:
+        if remaining <= 0:
+            truncated = True
+            break
+        relative_name = raw_name.decode("utf-8", errors="replace")
+        relative_path = Path(relative_name)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            fragments.append("\n[Omitted unsafe untracked path.]\n")
+            continue
+        candidate = worktree / relative_path
+        try:
+            if candidate.is_symlink():
+                fragments.append(f"\n[Omitted symlink: {relative_name}]\n")
+                continue
+            resolved = candidate.resolve(strict=True)
+            resolved.relative_to(worktree)
+            if not resolved.is_file():
+                continue
+            if resolved.stat().st_size > MAX_UNTRACKED_FILE_BYTES:
+                fragments.append(f"\n[Omitted untracked file over {MAX_UNTRACKED_FILE_BYTES} bytes: {relative_name}]\n")
+                continue
+            content_bytes = resolved.read_bytes()
+            if b"\0" in content_bytes:
+                fragments.append(f"\n[Omitted binary untracked file: {relative_name}]\n")
+                continue
+            content = content_bytes.decode("utf-8", errors="replace").splitlines(keepends=True)
+            fragment = "".join(difflib.unified_diff(
+                [], content, fromfile="/dev/null", tofile=relative_name, n=2
+            ))
+            fragment_bytes = fragment.encode("utf-8", errors="replace")
+            if len(fragment_bytes) > remaining:
+                fragments.append(fragment_bytes[:remaining].decode("utf-8", errors="replace"))
+                remaining = 0
+                truncated = True
+                break
+            fragments.append(fragment)
+            remaining -= len(fragment_bytes)
+        except (OSError, ValueError, RuntimeError):
+            fragments.append(f"\n[Could not safely read untracked file: {relative_name}]\n")
+
+    status_text = status_bytes.decode("utf-8", errors="replace").strip()
+    diff_text = "".join(fragments)
+    return {
+        "task_id": task_id,
+        "status": task["status"],
+        "workspace_path": str(worktree),
+        "files": status_text.splitlines() if status_text else [],
+        "diff": diff_text[:MAX_DIFF_BYTES],
+        "truncated": truncated,
+        "note": "Read-only Git inspection. Changes remain in the isolated worktree; TEDDY has not copied or merged them into the main repository.",
+    }
 
 
 def agent_available() -> bool:

@@ -31,3 +31,55 @@ def test_codex_event_log_does_not_store_command_arguments_or_secrets():
     assert summary == "Codex event: item.started (command_execution)."
     assert ".env" not in summary
     assert "fake-secret" not in summary
+
+
+def test_worktree_inspection_reports_tracked_and_untracked_changes(tmp_path, monkeypatch):
+    import subprocess
+
+    from backend import agent_runner
+    from backend.database import insert_task, update_task, utc_now
+
+    repo = tmp_path / "source-repo"
+    repo.mkdir()
+    def git(*args):
+        subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+    git("init")
+    git("config", "user.name", "TEDDY Test")
+    git("config", "user.email", "teddy-tests@example.invalid")
+    (repo / "example.py").write_text("value = 1\n", encoding="utf-8")
+    git("add", "example.py")
+    git("commit", "-m", "initial")
+    worktree = repo / ".teddy-worktrees" / "inspect-test"
+    worktree.parent.mkdir()
+    git("worktree", "add", "--detach", str(worktree), "HEAD")
+    (worktree / "example.py").write_text("value = 2\n", encoding="utf-8")
+    (worktree / "added.py").write_text("def answer():\n    return 42\n", encoding="utf-8")
+    monkeypatch.setattr(agent_runner, "REPO_ROOT", repo)
+
+    from backend.settings import get_settings
+    os.environ["SQLITE_PATH"] = str(tmp_path / "inspect-test.db")
+    get_settings.cache_clear()
+    from backend.database import init_db
+    init_db()
+    insert_task({
+        "id": "inspect-test", "session_id": "s", "prompt": "Change a file",
+        "status": "completed", "category": "coding", "provider": "test",
+        "model": None, "risk": "low", "approval_required": False,
+        "plan": ["Change it"], "created_at": utc_now(), "execution_mode": "agent",
+        "agent_name": "OpenAI Codex CLI", "workspace_path": str(worktree),
+        "execution_log": [],
+    })
+    changes = agent_runner.inspect_codex_worktree_changes("inspect-test")
+    assert any("example.py" in line for line in changes["files"])
+    assert any("added.py" in line for line in changes["files"])
+    assert "value = 2" in changes["diff"]
+    assert "return 42" in changes["diff"]
+    assert changes["truncated"] is False
+
+
+def test_plan_only_tasks_cannot_access_agent_changes_endpoint(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        created = client.post("/api/v1/tasks", json={"prompt": "Help me debug my Python API"})
+        response = client.get(f"/api/v1/tasks/{created.json()['id']}/changes")
+        assert response.status_code == 409
+        assert "no agent worktree" in response.json()["detail"].lower()

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -26,7 +27,9 @@ from backend.skill_registry import (
 )
 from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, SkillReviewRequest, TaskCreate, TaskResponse
 from backend.settings import get_settings
-from backend.agent_runner import agent_available, run_codex_task
+from backend.agent_runner import (
+    WorktreeInspectionError, agent_available, inspect_codex_worktree_changes, run_codex_task,
+)
 from scripts.import_skill_metadata import MAX_TOTAL_ARCHIVE_BYTES, import_archive
 
 
@@ -429,6 +432,16 @@ async def run_task_with_agent(task_id: str, background_tasks: BackgroundTasks):
 async def get_tasks(limit: int = Query(default=30, ge=1, le=100)):
     rows = list_tasks(limit)
     return [TaskResponse(**row) for row in rows]
+
+
+@app.get("/api/v1/tasks/{task_id}/changes", tags=["tasks"])
+async def inspect_task_changes(task_id: str):
+    if get_task(task_id) is None:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    try:
+        return await asyncio.to_thread(inspect_codex_worktree_changes, task_id)
+    except WorktreeInspectionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
