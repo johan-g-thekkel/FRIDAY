@@ -6,6 +6,7 @@ from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
 from backend.settings import get_settings
+from backend.model_profiles import load_model_profiles
 from backend.skill_registry import get_enabled_skill_context
 
 
@@ -238,10 +239,21 @@ async def create_plan(
     requested_route: str = "auto",
 ) -> dict[str, Any]:
     settings = get_settings()
-    if requested_route not in {"auto", "nebius", "nvidia_nim", "openai_compatible", "claude_fable"}:
-        raise ModelRouteUnavailable(
-            "Unknown model route. Choose auto, nebius, nvidia_nim, openai_compatible, or claude_fable."
-        )
+    static_routes = {"auto", "nebius", "nvidia_nim", "openai_compatible", "claude_fable"}
+    configured_profiles = load_model_profiles()
+    profile_by_id = {profile["id"]: profile for profile in configured_profiles}
+    selected_profile = None
+    if requested_route not in static_routes:
+        selected_profile = profile_by_id.get(requested_route)
+        if selected_profile is None:
+            raise ModelRouteUnavailable(
+                "Unknown model route. Check GET /api/v1/models for configured route IDs."
+            )
+        if not selected_profile["available"]:
+            raise ModelRouteUnavailable(
+                f"Model route '{requested_route}' is missing its configured API key. "
+                f"Set {selected_profile['api_key_env']} in the local environment."
+            )
     if requested_route == "nebius" and not settings.nebius_ready:
         raise ModelRouteUnavailable(
             "Nebius route is not configured. Set NEBIUS_API_KEY and NEBIUS_MODEL."
@@ -259,8 +271,11 @@ async def create_plan(
             "Claude Fable is disabled or not configured. Set ANTHROPIC_API_KEY and explicitly enable CLAUDE_FABLE_ENABLED."
         )
     provider_available = (
-        settings.nebius_ready or settings.nvidia_ready
-        or settings.openai_compatible_ready or settings.claude_fable_ready
+        settings.nebius_ready
+        or settings.nvidia_ready
+        or settings.openai_compatible_ready
+        or settings.claude_fable_ready
+        or any(profile["available"] for profile in configured_profiles)
     )
     selected_skills: list[dict[str, str]] = []
     if provider_available:
@@ -285,7 +300,8 @@ async def create_plan(
                 "Claude Fable request exceeds the configured prompt or estimated-cost guard."
             )
         use_fable = True
-    elif requested_route in {"nebius", "nvidia_nim", "openai_compatible"}:
+    elif requested_route != "auto":
+        # An explicit non-Fable route must never silently switch to a premium model.
         use_fable = False
     else:
         use_fable = _requires_claude_fable(prompt, settings, skill_context_chars)
@@ -296,6 +312,7 @@ async def create_plan(
         and not settings.nebius_ready
         and not settings.nvidia_ready
         and not settings.openai_compatible_ready
+        and not any(profile["available"] for profile in configured_profiles)
         and not use_fable
     ):
         raise ModelProviderUnavailableForSkills(
@@ -393,6 +410,60 @@ async def create_plan(
                 data,
                 provider="nvidia-nim",
                 model=settings.nvidia_model,
+                skills_used=skill_names,
+            )
+        finally:
+            await client.close()
+
+    # Named profiles are loaded from a local operator-controlled JSON file.
+    # Explicit profile IDs select exactly that endpoint; auto uses the first
+    # ready profile by configured priority after Nebius and NVIDIA NIM.
+    auto_profile = next(
+        (profile for profile in configured_profiles if profile["available"]),
+        None,
+    )
+    profile_to_use = (
+        selected_profile
+        if selected_profile is not None
+        else auto_profile
+        if requested_route == "auto"
+        and not settings.nebius_ready
+        and not settings.nvidia_ready
+        and auto_profile is not None
+        else None
+    )
+    if profile_to_use is not None and (
+        requested_route == profile_to_use["id"]
+        or requested_route == "auto"
+        and not settings.nebius_ready
+        and not settings.nvidia_ready
+    ):
+        client = AsyncOpenAI(
+            base_url=profile_to_use["base_url"],
+            api_key=profile_to_use["_api_key"],
+            timeout=45.0,
+            max_retries=1,
+        )
+        try:
+            response = await client.chat.completions.create(
+                model=profile_to_use["model"],
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.2,
+                max_tokens=900,
+            )
+            raw = response.choices[0].message.content or ""
+            match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+            if not match:
+                raise ValueError("The named model profile returned no JSON task plan.")
+            data = json.loads(match.group(0))
+            return _validate_plan(
+                prompt,
+                data,
+                provider=profile_to_use["provider"] + ":" + profile_to_use["id"],
+                model=profile_to_use["model"],
                 skills_used=skill_names,
             )
         finally:
