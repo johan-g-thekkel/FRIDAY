@@ -443,6 +443,50 @@
       toast(error.message, true);
     }
   }
+  async function importSkillArchive(event) {
+    event.preventDefault();
+    const input = $("#skills-archive");
+    const file = input.files && input.files[0];
+    if (!file) {
+      showSkillImportFeedback("Choose a supported ZIP archive first.", true);
+      return;
+    }
+    const button = $("#skills-import-button");
+    const original = button.innerHTML;
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    button.disabled = true;
+    button.innerHTML = '<span>Checking archive…</span>';
+    showSkillImportFeedback("Uploading archive. TEDDY will inspect canonical SKILL.md paths only.", false);
+    try {
+      const result = await api("/api/v1/skills/import", {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: formData
+      });
+      input.value = "";
+      $("#skills-file-name").textContent = "Choose a ZIP archive";
+      showSkillImportFeedback(
+        "Imported " + result.imported + " skill metadata file(s); skipped " + result.skipped + ". All imported skills remain disabled pending review.",
+        false
+      );
+      await loadAll(false);
+      setView("skills");
+      toast("Skill metadata import finished. Review new entries before enabling.");
+    } catch (error) {
+      showSkillImportFeedback(error.message, true);
+      toast("Skill import failed: " + error.message, true);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = original;
+    }
+  }
+  function showSkillImportFeedback(message, isError) {
+    const box = $("#skill-import-feedback");
+    box.hidden = false;
+    box.textContent = message;
+    box.classList.toggle("error", !!isError);
+  }
   async function loadAll(showErrors) {
     try {
       const results = await Promise.all([
@@ -590,6 +634,11 @@
     $("#integration-kind-filter").addEventListener("change", renderIntegrations);
     $("#skill-search").addEventListener("input", renderSkills);
     $("#skill-status-filter").addEventListener("change", renderSkills);
+    $("#skill-import-form").addEventListener("submit", importSkillArchive);
+    $("#skills-archive").addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      $("#skills-file-name").textContent = file ? file.name : "Choose a ZIP archive";
+    });
     $("#copy-skill-command").addEventListener("click", async function () {
       const command = "python scripts/skill_admin.py list\npython scripts/skill_admin.py show SKILL_ID\npython scripts/skill_admin.py enable SKILL_ID";
       try {

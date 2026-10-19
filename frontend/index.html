@@ -145,6 +145,14 @@
 
         <section class="view-section" id="view-skills">
           <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> KNOWLEDGE / TOOLING</div><h1>Skills library<span class="heading-period">.</span></h1><p class="page-subtitle">Metadata is discoverable here. Skills stay disabled until explicitly reviewed and hash-approved locally.</p></div><span class="section-count" id="skill-count-label">— skills</span></div>
+          <section class="panel skills-upload-panel">
+            <div class="skills-upload-copy"><div class="eyebrow">ADD SKILLS</div><h2>Import a skills archive</h2><p>Upload an ECC, Desktop2222, or curated TEDDY ZIP. TEDDY copies canonical <code>SKILL.md</code> files only—scripts and binaries are never executed or installed.</p><small>Accepted names: <code>ECC-main.zip</code>, <code>Desktop2222.zip</code>, <code>teddy-skill-candidates.zip</code>. Every imported skill starts disabled until reviewed.</small></div>
+            <form id="skill-import-form" class="skills-upload-form">
+              <label for="skills-archive" class="file-drop"><span class="file-drop-icon">⇧</span><span><strong id="skills-file-name">Choose a ZIP archive</strong><small>Maximum upload: 260 MiB</small></span><input id="skills-archive" type="file" accept=".zip,application/zip" required></label>
+              <button class="primary-button" type="submit" id="skills-import-button"><span>Import metadata</span><span class="button-arrow">↗</span></button>
+              <div class="form-feedback" id="skill-import-feedback" role="status" aria-live="polite" hidden></div>
+            </form>
+          </section>
           <div class="skills-safety"><span class="skills-safety-icon">⌑</span><div><strong>Review before enabling</strong><p>This UI never executes skill scripts or silently changes the local approval policy. To review and enable a skill, use the guarded CLI documented in the repository README.</p></div><button class="secondary-button" id="copy-skill-command">Copy review command</button></div>
           <div class="filter-row"><div class="search-wrap"><span>⌕</span><input id="skill-search" type="search" placeholder="Search skills or descriptions…"></div><select class="filter-select" id="skill-status-filter"><option value="all">All statuses</option><option value="enabled_reviewed">Reviewed & enabled</option><option value="disabled_pending_review">Pending review</option><option value="changed_since_review">Changed since review</option></select><span class="results-count" id="skill-results-count"></span></div>
           <div class="skills-table-wrap panel"><table class="skills-table"><thead><tr><th>SKILL</th><th>SOURCE</th><th>STATUS</th><th>COMPATIBLE RUNTIMES</th></tr></thead><tbody id="skills-table-body"><tr><td colspan="4" class="table-empty">Checking local skill inventory…</td></tr></tbody></table></div>

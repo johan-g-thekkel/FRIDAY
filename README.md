@@ -4,7 +4,7 @@
 
 ## Command-centre UI
 
-The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/static`). In Codespaces, open the forwarded port 8000 to use the command centre; no separate npm/Vite server is required. It loads `/health`, `/api/v1/status`, `/api/v1/models`, `/api/v1/integrations`, `/api/v1/skills`, `/api/v1/tasks`, and `/api/v1/bots`, then polls for updates every eight seconds while the tab is visible. Task submission creates a persisted plan and task history entry. The Bot Studio creates, edits, enables/disables, and deletes local Bot profiles with role instructions, notes, model-route defaults, runtime choice, and reviewed skills; a selected Bot's data is attached as untrusted context to task planning and optional coding runs.
+The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/static`). In Codespaces, open the forwarded port 8000 to use the command centre; no separate npm/Vite server is required. It loads `/health`, `/api/v1/status`, `/api/v1/models`, `/api/v1/integrations`, `/api/v1/skills`, `/api/v1/tasks`, and `/api/v1/bots`, then polls for updates every eight seconds while the tab is visible. Task submission creates a persisted plan and task history entry. The Bot Studio creates, edits, enables/disables, and deletes local Bot profiles with role instructions, notes, model-route defaults, runtime choice, and reviewed skills; a selected Bot's data is attached as untrusted context to task planning and optional coding runs. The Skills Library accepts supported ZIP uploads and imports canonical `SKILL.md` metadata only; uploaded code, scripts, and binaries are never executed.
 
 **Execution boundary:** planning is always available. Eligible coding tasks can additionally be submitted to the Codex CLI worker when the `codex` executable is installed and authenticated. Each run uses a detached Git worktree and Codex `workspace-write` sandbox, has a bounded timeout, records event metadata, and retains the worktree for human review. TEDDY does not auto-merge, push, deploy, or run non-coding tasks through this worker. Hermes and Claude Code remain inventory-only until separate, tested adapters are provided. Skills remain read-only in the UI and must be hash-approved with the guarded CLI.
 
@@ -72,7 +72,7 @@ List available model routes:
 curl http://127.0.0.1:8000/api/v1/models
 ```
 
-POST `/api/v1/tasks` accepts `model_route` values `auto`, `nebius`, or `claude_fable`. The `nebius` route uses the exact model ID configured in `NEBIUS_MODEL`; set it to a supported Nemotron ID in your Token Factory account to route tasks to Nemotron. Unconfigured explicit routes return HTTP 409 rather than silently falling back.
+POST `/api/v1/tasks` accepts `model_route` values `auto`, `nebius`, `nvidia_nim`, `openai_compatible`, `claude_fable`, and enabled IDs from `data/model-profiles.json`. The `nebius` route uses the exact model ID configured in `NEBIUS_MODEL`; set it to a supported Nemotron ID in your Token Factory account to route tasks to Nemotron. Unconfigured explicit routes return HTTP 409 rather than silently falling back.
 
 List actual integration readiness:
 
@@ -90,16 +90,18 @@ Set `SKILLS_ROOT=./skills/imported` in `.env` or leave the default. Copy reviewe
 
 The integration registry does not execute agents or expose credentials. A command being installed is not enough to mark it fully operational.
 
-### Import skill metadata from your ZIPs
+### Import skill metadata
 
-Download the curated TEDDY skill candidates ZIP attached to the project handoff, then upload it to your Codespace under `/workspaces/TEDDY/incoming/`. Run:
+Open the Skills Library in the web UI and upload one of the supported files: `ECC-main.zip`, `Desktop2222.zip`, or `teddy-skill-candidates.zip`. The API accepts canonical archive paths only and enforces archive, symlink, path-traversal, and individual skill-file size checks. It copies only selected `SKILL.md` files to the local ignored directory `skills/imported/`; it does not install dependencies, execute scripts, or enable skills. All discovered skills start as `disabled_pending_review`.
+
+The `teddy-skill-candidates.zip` name is supported for a curated archive, but **that archive is not bundled in this repository**. Use the original `ECC-main.zip` or `Desktop2222.zip` files that you have, or create the curated layout described in `scripts/import_skill_metadata.py`. You can also import from a local terminal:
 
 ```bash
-python scripts/import_skill_metadata.py incoming/teddy-skill-candidates.zip
+python scripts/import_skill_metadata.py incoming/ECC-main.zip incoming/Desktop2222.zip
 curl http://127.0.0.1:8000/api/v1/skills
 ```
 
-The bundle contains 316 canonical `SKILL.md` files from ECC, Astra, GLM-V, and REA plus source-license files and a provenance manifest. It intentionally excludes executable scripts, model weights, environment files, and CL4R1T4S prompt dumps. The importer copies only canonical `SKILL.md` files into the local ignored directory `skills/imported/`; it does not install dependencies, execute scripts, or enable skills. All discovered skills start as `disabled_pending_review`. The original `ECC-main.zip` and `Desktop2222.zip` archives can also be scanned directly if copied into the Codespace.
+Only metadata is imported. Model weights, environments, executable scripts, and the quarantined CL4R1T4S prompt archive are not activated. All new skills remain disabled until explicit, hash-pinned review.
 
 Review and enable a skill from the terminal:
 
