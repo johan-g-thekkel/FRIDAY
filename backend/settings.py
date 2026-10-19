@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     nebius_api_key: str | None = None
     nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1"
     nebius_model: str | None = None
+    # Optional NVIDIA NIM OpenAI-compatible endpoint (use exact model ID).
+    nvidia_api_key: str | None = None
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nvidia_model: str | None = None
     # Fable is opt-in to avoid unexpected paid inference calls.
     anthropic_api_key: str | None = None
     claude_fable_model: str = "claude-fable-5-1"
@@ -34,6 +38,10 @@ class Settings(BaseSettings):
     @property
     def nebius_ready(self) -> bool:
         return bool(self.nebius_api_key and self.nebius_model)
+
+    @property
+    def nvidia_ready(self) -> bool:
+        return bool(self.nvidia_api_key and self.nvidia_model)
 
     @property
     def claude_fable_ready(self) -> bool:
