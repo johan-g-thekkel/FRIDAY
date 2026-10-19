@@ -115,13 +115,61 @@ def list_integrations() -> list[dict[str, Any]]:
             "details": "A Codespace/container stop still stops its processes; tmux is not 24/7 hosting.",
         },
         {
+            "id": "livekit_agents",
+            "name": "LiveKit Agents",
+            "kind": "realtime_voice_runtime",
+            "status": "source_received_sdk_adapter_pending",
+            "purpose": "Realtime voice sessions with selectable STT, LLM, and TTS providers",
+            "details": "The uploaded repository is the framework source; use the supported SDK as a separate worker. Credentials and voice interaction have not been configured.",
+        },
+        {
+            "id": "astra_runtime",
+            "name": "Astra Agent Runtime",
+            "kind": "agent_runtime",
+            "status": "source_received_evaluation_required",
+            "purpose": "Candidate for evidence-backed long-running agent work and governed execution",
+            "details": "Apache-2.0 source received; it overlaps TEDDY's orchestrator/worker layer, so evaluate through a separate process instead of copying its source tree into the API.",
+        },
+        {
+            "id": "glm_v",
+            "name": "GLM-V Vision Models",
+            "kind": "multimodal_model",
+            "status": "source_and_skills_received_weights_not_in_archive",
+            "purpose": "Image/video/document understanding and visual grounding via a supported endpoint or local runtime",
+            "details": "The archive contains model code and 10 skills but no model checkpoint files.",
+        },
+        {
+            "id": "rea_mcp",
+            "name": "REA MCP",
+            "kind": "reverse_engineering_tool",
+            "status": "source_received_node_runtime_and_setup_pending",
+            "purpose": "Evidence-backed inspection of owned or authorized binaries, applications, and runtime behavior",
+            "details": "Requires supported Node.js and any target-specific analysis tools. Enable only for authorized targets.",
+        },
+        {
+            "id": "vulk_mcp",
+            "name": "VULK MCP Connector",
+            "kind": "external_app_builder",
+            "status": "source_received_auth_and_docs_verification_pending",
+            "purpose": "Optional external app-building workflow through VULK",
+            "details": "May consume account credits and cause remote side effects; verify the current official auth/tool contract and require approval before project creation or deployment.",
+        },
+        {
+            "id": "cl4r1t4s_prompt_archive",
+            "name": "CL4R1T4S Prompt Collection",
+            "kind": "untrusted_reference_data",
+            "status": "quarantined_not_enabled",
+            "purpose": "Optional read-only research reference only",
+            "details": "Do not load its contents as system instructions or execute them; the README includes an instruction-injection attempt and the archive describes extracted third-party prompts.",
+        },
+        {
             "id": "tesseract_ocr",
             "name": "Tesseract OCR",
             "kind": "utility",
             "status": (
                 "installed_needs_test"
                 if shutil.which("tesseract")
-                else "source_received_build_required"
+                else "not_installed_or_built"
             ),
             "purpose": "Text extraction from images, documents, and selected video frames",
             "details": "Tesseract OCR source was reviewed separately; build/install the OCR engine and language data before use. It is not the video editor.",
@@ -138,16 +186,16 @@ def list_integrations() -> list[dict[str, Any]]:
             "id": "blynk",
             "name": "Blynk / IoT",
             "kind": "device_integration",
-            "status": "awaiting_user_library",
+            "status": "firmware_library_received_backend_adapter_pending",
             "purpose": "Authorized IoT control via a separate adapter",
-            "details": "No device commands are enabled in this backend.",
+            "details": "Blynk C++ library v1.3.2 (MIT) is included in the uploaded archive. It is for firmware; the TEDDY backend still needs a supported cloud connector, device allow-list, secure credentials, state read-back, and approval gate. No device commands are enabled.",
         },
         {
             "id": "user_skills",
             "name": "User Skills Library",
             "kind": "skills_registry",
-            "status": "awaiting_skill_archives",
+            "status": "skill_archives_received_inventory_pending",
             "purpose": "Discover and index skill packages for compatible agents",
-            "details": "Only inspected and explicitly enabled skills may be used; upload never triggers execution.",
+            "details": "ECC, Astra, GLM-V, and REA contain candidate skill definitions. Contents must be indexed, deduplicated, reviewed, and disabled by default; upload never triggers execution.",
         },
     ]
