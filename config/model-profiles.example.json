@@ -7,7 +7,7 @@
     "api_key_env": "NEX_N2_5_API_KEY",
     "priority": 50,
     "capabilities": ["text", "reasoning", "coding", "tool-calling"],
-    "enabled": true
+    "enabled": false
   },
   {
     "id": "glm_v",
