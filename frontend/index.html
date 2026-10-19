@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d14">
+  <meta name="description" content="TEDDY AI operator command centre">
+  <title>TEDDY — Command Centre</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="TEDDY home">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span><strong>TEDDY</strong><small>AI OPERATING SYSTEM</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item active" data-view-target="overview"><span class="nav-icon">◈</span><span>Command centre</span><span class="nav-shortcut">01</span></button>
+        <button class="nav-item" data-view-target="tasks"><span class="nav-icon">▤</span><span>Task history</span><span class="nav-shortcut" id="nav-task-count">—</span></button>
+        <button class="nav-item" data-view-target="models"><span class="nav-icon">⌘</span><span>Model routes</span></button>
+        <button class="nav-item" data-view-target="integrations"><span class="nav-icon">⌬</span><span>Agents & integrations</span></button>
+        <button class="nav-item" data-view-target="skills"><span class="nav-icon">◇</span><span>Skills library</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="connection-card">
+          <span class="pulse-dot" id="sidebar-pulse"></span>
+          <div><strong id="sidebar-api-label">Connecting to API</strong><small id="sidebar-api-detail">Checking local backend…</small></div>
+        </div>
+        <div class="sidebar-foot"><span>TEDDY CORE</span><span>v0.2</span></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>TEDDY</span><span class="crumb-slash">/</span><strong id="page-crumb">COMMAND CENTRE</strong></div>
+        <div class="topbar-right">
+          <span class="runtime-pill"><span class="tiny-dot"></span><span id="runtime-mode">PLANNER MODE</span></span>
+          <button class="icon-button" id="refresh-button" title="Refresh status" aria-label="Refresh status">↻</button>
+          <div class="avatar">T</div>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <section class="view-section active" id="view-overview">
+          <div class="page-heading">
+            <div><div class="eyebrow"><span class="eyebrow-line"></span> OPERATOR CONSOLE</div><h1>Command centre<span class="heading-period">.</span></h1><p class="page-subtitle">One workspace for your models, agents, skills, and work in progress.</p></div>
+            <div class="heading-meta"><span class="live-indicator"></span><span id="last-updated">Waiting for first sync</span></div>
+          </div>
+
+          <div class="mode-notice" id="execution-notice">
+            <div class="notice-icon">ⓘ</div><div><strong>Planning is online. Autonomous execution is not enabled.</strong><p>TEDDY can route a prompt to a configured model and save its plan. Shell execution, agent workers, and automatic repair still require separate runtime integration.</p></div>
+            <a href="/docs" target="_blank" rel="noreferrer">API docs ↗</a>
+          </div>
+
+          <div class="stat-grid">
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">TASKS RECORDED</span><span class="stat-symbol purple">▤</span></div><div class="stat-value" id="stat-tasks">—</div><div class="stat-foot"><span class="stat-muted">Saved in local task history</span></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">MODEL ROUTES</span><span class="stat-symbol cyan">⌘</span></div><div class="stat-value" id="stat-models">—</div><div class="stat-foot"><span class="stat-muted" id="stat-models-note">Configured routes</span></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">RUNTIMES READY</span><span class="stat-symbol green">⌬</span></div><div class="stat-value" id="stat-runtimes">—</div><div class="stat-foot"><span class="stat-muted">Installed or available status only</span></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label">SKILLS DISCOVERED</span><span class="stat-symbol amber">◇</span></div><div class="stat-value" id="stat-skills">—</div><div class="stat-foot"><span class="stat-muted" id="stat-skills-note">Reviewed skills remain opt-in</span></div></article>
+          </div>
+
+          <div class="workspace-grid">
+            <section class="panel task-composer">
+              <div class="panel-header"><div><div class="eyebrow">NEW REQUEST</div><h2>What are we working on?</h2></div><span class="panel-orb">✳</span></div>
+              <p class="panel-description">Describe the outcome. TEDDY will classify the task, choose an available route, and produce a saved plan.</p>
+              <form id="task-form">
+                <label class="sr-only" for="task-prompt">Describe your task</label>
+                <textarea id="task-prompt" maxlength="8000" required placeholder="Build a Python utility that watches a folder, detects new CSV files, and validates their columns…"></textarea>
+                <div class="composer-bottom"><span id="prompt-counter">0 / 8000</span><span>Enter a clear goal and constraints</span></div>
+                <div class="composer-options">
+                  <div class="field-group"><label for="model-route">MODEL ROUTE</label><select id="model-route"><option value="auto">Automatic routing</option></select><small id="route-help">Uses the best configured route available.</small></div>
+                  <div class="field-group"><label>APPROVED SKILLS <span class="optional-label">OPTIONAL</span></label><div class="skill-select-wrap" id="composer-skills"><span class="muted-small">Loading approved skills…</span></div></div>
+                </div>
+                <div class="composer-actions"><span class="composer-safe"><span class="lock-icon">⌑</span> No commands are executed</span><button class="primary-button" id="submit-task" type="submit"><span>Generate task plan</span><span class="button-arrow">↗</span></button></div>
+              </form>
+              <div class="form-feedback" id="form-feedback" role="status" aria-live="polite" hidden></div>
+            </section>
+
+            <section class="panel activity-panel">
+              <div class="panel-header"><div><div class="eyebrow">RECENT ACTIVITY</div><h2>Task timeline</h2></div><button class="text-button" data-view-target="tasks">View all <span>↗</span></button></div>
+              <div id="recent-tasks" class="task-list"><div class="empty-state compact"><div class="empty-glyph">◇</div><strong>Waiting for your first task</strong><p>New task plans will appear here.</p></div></div>
+              <div class="activity-footer"><span class="activity-live-dot"></span><span>Syncing with task history</span><span class="footer-spacer"></span><span id="activity-sync">—</span></div>
+            </section>
+          </div>
+
+          <div class="lower-grid">
+            <section class="panel">
+              <div class="panel-header"><div><div class="eyebrow">MODEL LAYER</div><h2>Routing status</h2></div><button class="text-button" data-view-target="models">View routes ↗</button></div>
+              <div id="overview-models" class="compact-list"><div class="skeleton-row"></div><div class="skeleton-row"></div></div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><div><div class="eyebrow">INTEGRATION LAYER</div><h2>Agent readiness</h2></div><button class="text-button" data-view-target="integrations">View all ↗</button></div>
+              <div id="overview-integrations" class="compact-list"><div class="skeleton-row"></div><div class="skeleton-row"></div></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-section" id="view-tasks">
+          <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> WORKSPACE / HISTORY</div><h1>Task history<span class="heading-period">.</span></h1><p class="page-subtitle">Inspect saved plans, routing decisions, and task risk labels.</p></div><button class="secondary-button" id="tasks-refresh">↻ Refresh history</button></div>
+          <div class="filter-row"><div class="search-wrap"><span>⌕</span><input id="task-search" type="search" placeholder="Search task prompts…"></div><span class="results-count" id="task-results-count">0 tasks</span></div>
+          <div class="task-history-layout"><section class="panel history-panel"><div id="all-tasks" class="task-list"><div class="empty-state"><div class="empty-glyph">▤</div><strong>No tasks yet</strong><p>Create a plan from the command centre to see it here.</p></div></div></section><aside class="panel task-detail-panel" id="task-detail"><div class="empty-state"><div class="empty-glyph">◈</div><strong>Select a task</strong><p>Task plan, route, category, risk, and approved skills will appear here.</p></div></aside></div>
+        </section>
+
+        <section class="view-section" id="view-models">
+          <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> INFERENCE / ROUTING</div><h1>Model routes<span class="heading-period">.</span></h1><p class="page-subtitle">Routes are sourced from the backend. Credentials and availability are never guessed.</p></div><span class="section-count" id="model-route-count">— routes</span></div>
+          <div class="route-banner"><div class="route-banner-icon">⌘</div><div><strong id="default-route-title">Automatic route selection</strong><p id="default-route-description">Uses whichever configured model provider is available under the backend's routing policy.</p></div><span class="route-banner-tag">DEFAULT</span></div>
+          <div class="model-grid" id="model-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+        </section>
+
+        <section class="view-section" id="view-integrations">
+          <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> RUNTIME / CONNECTORS</div><h1>Agents & integrations<span class="heading-period">.</span></h1><p class="page-subtitle">A transparent inventory of what is available, configured, missing, or still planned.</p></div><button class="secondary-button" id="integrations-refresh">↻ Refresh status</button></div>
+          <div class="integration-summary" id="integration-summary"></div>
+          <div class="filter-row"><div class="search-wrap"><span>⌕</span><input id="integration-search" type="search" placeholder="Find Hermes, Codex, Blynk…"></div><select class="filter-select" id="integration-kind-filter"><option value="all">All types</option></select><span class="results-count" id="integration-results-count"></span></div>
+          <div class="integration-grid" id="integration-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+        </section>
+
+        <section class="view-section" id="view-skills">
+          <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> KNOWLEDGE / TOOLING</div><h1>Skills library<span class="heading-period">.</span></h1><p class="page-subtitle">Metadata is discoverable here. Skills stay disabled until explicitly reviewed and hash-approved locally.</p></div><span class="section-count" id="skill-count-label">— skills</span></div>
+          <div class="skills-safety"><span class="skills-safety-icon">⌑</span><div><strong>Review before enabling</strong><p>This UI never executes skill scripts or silently changes the local approval policy. To review and enable a skill, use the guarded CLI documented in the repository README.</p></div><button class="secondary-button" id="copy-skill-command">Copy review command</button></div>
+          <div class="filter-row"><div class="search-wrap"><span>⌕</span><input id="skill-search" type="search" placeholder="Search skills or descriptions…"></div><select class="filter-select" id="skill-status-filter"><option value="all">All statuses</option><option value="enabled_reviewed">Reviewed & enabled</option><option value="disabled_pending_review">Pending review</option><option value="changed_since_review">Changed since review</option></select><span class="results-count" id="skill-results-count"></span></div>
+          <div class="skills-table-wrap panel"><table class="skills-table"><thead><tr><th>SKILL</th><th>SOURCE</th><th>STATUS</th><th>COMPATIBLE RUNTIMES</th></tr></thead><tbody id="skills-table-body"><tr><td colspan="4" class="table-empty">Checking local skill inventory…</td></tr></tbody></table></div>
+          <p class="page-footnote" id="skills-note">No skill contents or secrets are exposed by the metadata endpoint.</p>
+        </section>
+      </div>
+      <footer class="app-footer"><span>TEDDY <span class="footer-dim">/ PERSONAL AI OPERATOR</span></span><span><span class="footer-green-dot"></span> Backend-connected workspace</span><span id="footer-clock">—</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

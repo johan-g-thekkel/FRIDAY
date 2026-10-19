@@ -296,3 +296,26 @@ def test_unconfigured_custom_model_route_returns_conflict(tmp_path):
         )
         assert response.status_code == 409
         assert "openai-compatible" in response.json()["detail"].lower()
+
+
+def test_root_serves_command_centre_ui(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert "TEDDY" in response.text
+        assert 'id="task-form"' in response.text
+
+        css = client.get("/static/app.css")
+        script = client.get("/static/app.js")
+        assert css.status_code == 200
+        assert "text/css" in css.headers["content-type"]
+        assert script.status_code == 200
+        assert "application/javascript" in script.headers["content-type"] or "text/javascript" in script.headers["content-type"]
+
+
+def test_api_root_remains_available(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api")
+        assert response.status_code == 200
+        assert response.json()["ui"] == "/"

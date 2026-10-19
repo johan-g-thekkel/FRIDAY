@@ -2,6 +2,12 @@
 
 **TEDDY** is a personal AI operator prototype for the Nebius Global AI Hackathon. The intended product combines a minimal command-centre UI, model routing, specialized Bots, policy-controlled tools, and a verified coding loop.
 
+## Command-centre UI
+
+The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/static`). In Codespaces, open the forwarded port 8000 to use the command centre; no separate npm/Vite server is required. It loads `/health`, `/api/v1/status`, `/api/v1/models`, `/api/v1/integrations`, `/api/v1/skills`, and `/api/v1/tasks`, then polls for updates every eight seconds while the tab is visible. Task submission creates a persisted plan and task history entry.
+
+**Current execution boundary:** this interface does not pretend that planning is code execution. The backend's task endpoint still stores plans only; Hermes/Codex/Claude Code worker execution, isolated workspaces, terminal streaming, automatic repair, and device actions are not enabled yet. Skills remain read-only in the UI and must be hash-approved with the guarded CLI.
+
 ## Backend status
 
 The initial backend is now in the repository:

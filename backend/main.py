@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import get_task, init_db, insert_task, list_tasks
@@ -25,6 +28,8 @@ async def lifespan(_: FastAPI):
 
 
 settings = get_settings()
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
 app = FastAPI(
     title="TEDDY API",
     description=(
@@ -44,14 +49,24 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+# Serve the command-centre UI from the same origin as the API. This keeps
+# Codespaces setup simple and avoids exposing API credentials to browser code.
+app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
 
-@app.get("/", tags=["system"])
+
+@app.get("/", tags=["ui"], include_in_schema=False)
 async def root():
+    return FileResponse(FRONTEND_DIR / "index.html")
+
+
+@app.get("/api", tags=["system"])
+async def api_root():
     return {
         "name": "TEDDY",
         "message": "TEDDY backend is running.",
         "docs": "/docs",
         "health": "/health",
+        "ui": "/",
     }
 
 
