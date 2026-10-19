@@ -232,3 +232,28 @@ def test_explicit_unapproved_skill_is_rejected_by_api(tmp_path):
         )
         assert response.status_code == 422
         assert "not approved" in response.json()["detail"].lower()
+
+
+def test_model_routes_report_only_configured_providers(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api/v1/models")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["default_route"] == "auto"
+        routes = {item["id"]: item for item in body["routes"]}
+        assert routes["auto"]["available"] is True
+        assert routes["nebius"]["available"] is False
+        assert routes["claude_fable"]["available"] is False
+
+
+def test_unconfigured_explicit_model_route_returns_conflict(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.post(
+            "/api/v1/tasks",
+            json={
+                "prompt": "Explain a Python unit-test strategy",
+                "model_route": "nebius",
+            },
+        )
+        assert response.status_code == 409
+        assert "not configured" in response.json()["detail"].lower()
