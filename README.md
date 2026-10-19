@@ -78,7 +78,7 @@ The integration registry does not execute agents or expose credentials. A comman
 
 ### Import skill metadata from your ZIPs
 
-Download the [curated TEDDY skill candidates bundle](https://github.com/johan-g-thekkel/TEDDY) from this conversation, then upload it to your Codespace under `/workspaces/TEDDY/incoming/`. Run:
+Download the curated TEDDY skill candidates ZIP attached to the project handoff, then upload it to your Codespace under `/workspaces/TEDDY/incoming/`. Run:
 
 ```bash
 python scripts/import_skill_metadata.py incoming/teddy-skill-candidates.zip
