@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import get_task, init_db, insert_task, list_tasks
 from backend.integration_registry import list_integrations
+from backend.model_profiles import public_model_profiles
 from backend.model_router import (
     create_plan,
     ModelProviderUnavailableForSkills,
@@ -104,7 +105,7 @@ async def model_routes():
                 "name": "Automatic",
                 "available": True,
                 "model": None,
-                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius, NVIDIA NIM, or generic OpenAI-compatible model, or the deterministic local fallback.",
+                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius or NVIDIA NIM model, then a ready named model profile, the generic OpenAI-compatible model, or the deterministic local fallback.",
             },
             {
                 "id": "nebius",
@@ -142,8 +143,8 @@ async def model_routes():
                 "model": current.claude_fable_model if current.claude_fable_ready else None,
                 "details": "Optional premium reasoning route; it is disabled by default and remains behind a prompt-size and approximate-cost guard.",
             },
-        ],
-        "note": "NVIDIA NIM supports configured compatible chat models (including Nemotron where available). Hermes, Codex, Claude Code, Nex-N2.5, Needle 3, and GLM-V still require separate runtime/provider adapters and are not yet selectable from this model-route endpoint.",
+        ] + public_model_profiles(),
+        "note": "NVIDIA NIM supports configured compatible chat models (including Nemotron where available). Additional OpenAI-compatible models can be added in data/model-profiles.json. Hermes, Codex, Claude Code, Needle 3, and local GLM-V runtimes still need separate agent/model adapters.",
     }
 
 
