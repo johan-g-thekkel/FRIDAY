@@ -7,6 +7,7 @@
     integrations: [],
     bots: [],
     editingBotId: null,
+    reviewingSkill: null,
     skills: { skills: [], count: 0 },
     tasks: [],
     selectedTaskId: null,
@@ -289,8 +290,109 @@
     $("#skills-note").textContent = state.skills.note || "Metadata endpoint response received.";
     $("#skills-table-body").innerHTML = skills.length ? skills.map(function (skill) {
       const runtimes = (skill.compatible_runtimes || []).map(function (runtime) { return '<span class="runtime-chip">' + escapeHtml(readable(runtime)) + '</span>'; }).join("");
-      return '<tr><td><span class="skill-name">' + escapeHtml(skill.name) + '</span><span class="skill-desc">' + escapeHtml(skill.description) + '</span><span class="skill-desc">' + escapeHtml(skill.path) + '</span></td><td>' + escapeHtml(skill.source) + '</td><td>' + statusPill(skill.status) + '</td><td><div class="skill-runtimes">' + (runtimes || '<span class="runtime-chip">Text model</span>') + '</div></td></tr>';
-    }).join("") : '<tr><td colspan="4" class="table-empty">' + (state.skills.count ? "No skills match those filters." : "No local skills discovered. Import skills into skills/imported and refresh.") + '</td></tr>';
+      const action = skill.status === "enabled_reviewed"
+        ? '<button type="button" class="text-button danger-text" data-skill-action="disable" data-skill-id="' + escapeHtml(skill.id) + '">Disable</button>'
+        : '<button type="button" class="secondary-button skill-review-action" data-skill-action="review" data-skill-id="' + escapeHtml(skill.id) + '">Review & enable</button>';
+      return '<tr><td><span class="skill-name">' + escapeHtml(skill.name) + '</span><span class="skill-desc">' + escapeHtml(skill.description) + '</span><span class="skill-desc">' + escapeHtml(skill.path) + '</span></td><td>' + escapeHtml(skill.source) + '</td><td>' + statusPill(skill.status) + '</td><td><div class="skill-runtimes">' + (runtimes || '<span class="runtime-chip">Text model</span>') + '</div></td><td>' + action + '</td></tr>';
+    }).join("") : '<tr><td colspan="5" class="table-empty">' + (state.skills.count ? "No skills match those filters." : "No local skills discovered. Import a supported ZIP above.") + '</td></tr>';
+  }
+  async function openSkillReview(skillId) {
+    try {
+      const detail = await api("/api/v1/skills/" + encodeURIComponent(skillId));
+      state.reviewingSkill = detail;
+      $("#skill-review-name").textContent = detail.name;
+      $("#skill-review-description").textContent = detail.description || "No description provided.";
+      $("#skill-review-path").textContent = detail.source + " / " + detail.path;
+      $("#skill-review-status").textContent = readable(detail.status);
+      $("#skill-review-content").textContent = detail.content;
+      $("#skill-review-hash").textContent = detail.content_sha256;
+      $("#skill-review-expected").textContent = "ENABLE " + detail.id;
+      $("#skill-review-confirm-text").value = "";
+      $("#skill-review-consent").checked = false;
+      $("#skill-review-enable").disabled = true;
+      $("#skill-review-disable").hidden = detail.status === "disabled_pending_review";
+      $("#skill-review-modal").hidden = false;
+      document.body.classList.add("modal-open");
+      $("#skill-review-close").focus();
+    } catch (error) {
+      toast("Unable to open skill review: " + error.message, true);
+    }
+  }
+  function closeSkillReview() {
+    $("#skill-review-modal").hidden = true;
+    document.body.classList.remove("modal-open");
+    state.reviewingSkill = null;
+    $("#skill-review-content").textContent = "";
+    $("#skill-review-confirm-text").value = "";
+    $("#skill-review-consent").checked = false;
+  }
+  function validateSkillReviewForm() {
+    const detail = state.reviewingSkill;
+    const phrase = detail ? "ENABLE " + detail.id : "";
+    const correctPhrase = $("#skill-review-confirm-text").value === phrase;
+    $("#skill-review-enable").disabled = !(detail && correctPhrase && $("#skill-review-consent").checked);
+  }
+  async function enableReviewedSkill() {
+    const detail = state.reviewingSkill;
+    if (!detail) return;
+    const button = $("#skill-review-enable");
+    button.disabled = true;
+    const original = button.innerHTML;
+    button.innerHTML = '<span>Saving approval…</span>';
+    try {
+      await api("/api/v1/skills/" + encodeURIComponent(detail.id) + "/enable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+          content_sha256: detail.content_sha256,
+          confirmation: $("#skill-review-confirm-text").value
+        })
+      });
+      closeSkillReview();
+      await loadAll(false);
+      setView("skills");
+      toast("Skill enabled for model context. Its content is hash-pinned; changes require another review.");
+    } catch (error) {
+      toast(error.message, true);
+      button.disabled = false;
+    } finally {
+      button.innerHTML = original;
+    }
+  }
+  async function disableReviewedSkill() {
+    const detail = state.reviewingSkill;
+    if (!detail) return;
+    if (!window.confirm('Disable skill "' + detail.name + '"? It will no longer be selectable for model tasks.')) return;
+    try {
+      await api("/api/v1/skills/" + encodeURIComponent(detail.id) + "/disable", {
+        method: "POST", headers: { "Accept": "application/json" }
+      });
+      closeSkillReview();
+      await loadAll(false);
+      setView("skills");
+      toast("Skill disabled.");
+    } catch (error) {
+      toast(error.message, true);
+    }
+  }
+  async function handleSkillAction(action, skillId) {
+    if (action === "review") {
+      await openSkillReview(skillId);
+      return;
+    }
+    if (action === "disable") {
+      const skill = state.skills.skills.find(function (item) { return item.id === skillId; });
+      if (!skill || !window.confirm('Disable skill "' + skill.name + '"?')) return;
+      try {
+        await api("/api/v1/skills/" + encodeURIComponent(skillId) + "/disable", {
+          method: "POST", headers: { "Accept": "application/json" }
+        });
+        await loadAll(false);
+        toast("Skill disabled.");
+      } catch (error) {
+        toast(error.message, true);
+      }
+    }
   }
   function renderBotSelect() {
     const select = $("#bot-select");
@@ -602,6 +704,11 @@
         if (view) setView(view);
         return;
       }
+      const skillActionButton = event.target.closest("[data-skill-action]");
+      if (skillActionButton) {
+        handleSkillAction(skillActionButton.getAttribute("data-skill-action"), skillActionButton.getAttribute("data-skill-id"));
+        return;
+      }
       const botActionButton = event.target.closest("[data-bot-action]");
       if (botActionButton) {
         botAction(botActionButton.getAttribute("data-bot-action"), botActionButton.getAttribute("data-bot-id"));
@@ -634,6 +741,18 @@
     $("#integration-kind-filter").addEventListener("change", renderIntegrations);
     $("#skill-search").addEventListener("input", renderSkills);
     $("#skill-status-filter").addEventListener("change", renderSkills);
+    $("#skill-review-close").addEventListener("click", closeSkillReview);
+    $("#skill-review-cancel").addEventListener("click", closeSkillReview);
+    $("#skill-review-modal").addEventListener("click", function (event) {
+      if (event.target === this) closeSkillReview();
+    });
+    $("#skill-review-confirm-text").addEventListener("input", validateSkillReviewForm);
+    $("#skill-review-consent").addEventListener("change", validateSkillReviewForm);
+    $("#skill-review-enable").addEventListener("click", enableReviewedSkill);
+    $("#skill-review-disable").addEventListener("click", disableReviewedSkill);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !$("#skill-review-modal").hidden) closeSkillReview();
+    });
     $("#skill-import-form").addEventListener("submit", importSkillArchive);
     $("#skills-archive").addEventListener("change", function () {
       const file = this.files && this.files[0];

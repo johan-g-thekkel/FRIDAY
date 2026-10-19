@@ -153,14 +153,36 @@
               <div class="form-feedback" id="skill-import-feedback" role="status" aria-live="polite" hidden></div>
             </form>
           </section>
-          <div class="skills-safety"><span class="skills-safety-icon">⌑</span><div><strong>Review before enabling</strong><p>This UI never executes skill scripts or silently changes the local approval policy. To review and enable a skill, use the guarded CLI documented in the repository README.</p></div><button class="secondary-button" id="copy-skill-command">Copy review command</button></div>
+          <div class="skills-safety"><span class="skills-safety-icon">⌑</span><div><strong>Review before enabling</strong><p>Open each skill's actual text, review it as untrusted content, then explicitly approve its current hash. Nothing inside a skill is executed.</p></div><button class="secondary-button" id="copy-skill-command">Copy CLI fallback</button></div>
           <div class="filter-row"><div class="search-wrap"><span>⌕</span><input id="skill-search" type="search" placeholder="Search skills or descriptions…"></div><select class="filter-select" id="skill-status-filter"><option value="all">All statuses</option><option value="enabled_reviewed">Reviewed & enabled</option><option value="disabled_pending_review">Pending review</option><option value="changed_since_review">Changed since review</option></select><span class="results-count" id="skill-results-count"></span></div>
-          <div class="skills-table-wrap panel"><table class="skills-table"><thead><tr><th>SKILL</th><th>SOURCE</th><th>STATUS</th><th>COMPATIBLE RUNTIMES</th></tr></thead><tbody id="skills-table-body"><tr><td colspan="4" class="table-empty">Checking local skill inventory…</td></tr></tbody></table></div>
+          <div class="skills-table-wrap panel"><table class="skills-table"><thead><tr><th>SKILL</th><th>SOURCE</th><th>STATUS</th><th>COMPATIBLE RUNTIMES</th><th>ACTION</th></tr></thead><tbody id="skills-table-body"><tr><td colspan="5" class="table-empty">Checking local skill inventory…</td></tr></tbody></table></div>
           <p class="page-footnote" id="skills-note">No skill contents or secrets are exposed by the metadata endpoint.</p>
         </section>
       </div>
       <footer class="app-footer"><span>TEDDY <span class="footer-dim">/ PERSONAL AI OPERATOR</span></span><span><span class="footer-green-dot"></span> Backend-connected workspace</span><span id="footer-clock">—</span></footer>
     </main>
+  </div>
+  <div id="skill-review-modal" class="modal-backdrop" hidden>
+    <section class="skill-review-dialog" role="dialog" aria-modal="true" aria-labelledby="skill-review-name">
+      <div class="skill-review-header">
+        <div><div class="eyebrow">HUMAN REVIEW / UNTRUSTED CONTENT</div><h2 id="skill-review-name">Review skill</h2><p id="skill-review-description"></p></div>
+        <button type="button" class="icon-button" id="skill-review-close" aria-label="Close skill review">×</button>
+      </div>
+      <div class="skill-review-meta"><span id="skill-review-path"></span><span id="skill-review-status"></span></div>
+      <div class="skill-review-warning"><strong>Inspect this text carefully.</strong> The skill can contain misleading instructions. It is supplemental model context, never system policy, and TEDDY does not execute any commands from it.</div>
+      <pre id="skill-review-content" class="skill-review-content" tabindex="0"></pre>
+      <div class="skill-review-hash-row"><span>CONTENT SHA-256</span><code id="skill-review-hash"></code></div>
+      <div class="skill-review-approval">
+        <label class="skill-review-checkbox"><input id="skill-review-consent" type="checkbox"><span>I have reviewed this exact document and approve it as untrusted supplemental guidance for model tasks.</span></label>
+        <label class="field-group skill-confirm-label" for="skill-review-confirm-text">TYPE THE CONFIRMATION PHRASE <code id="skill-review-expected"></code></label>
+        <input id="skill-review-confirm-text" type="text" autocomplete="off" spellcheck="false" placeholder="Type the phrase shown above">
+      </div>
+      <div class="skill-review-footer">
+        <button type="button" class="secondary-button" id="skill-review-cancel">Cancel</button>
+        <button type="button" class="text-button danger-text" id="skill-review-disable" hidden>Disable skill</button>
+        <button type="button" class="primary-button" id="skill-review-enable" disabled><span>Approve this exact version</span><span class="button-arrow">↗</span></button>
+      </div>
+    </section>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/static/app.js" defer></script>
