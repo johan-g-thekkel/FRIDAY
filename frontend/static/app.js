@@ -187,7 +187,7 @@
       workerSection = canRun
         ? (codexReady
             ? '<button class="primary-button run-agent-button" id="run-codex-task" data-task-id="' + escapeHtml(task.id) + '"><span>Run in isolated Codex worktree</span><span class="button-arrow">↗</span></button><p class="worker-explainer">Runs in a separate Git worktree with Codex workspace-write sandbox. Changes are not merged automatically.</p>'
-            : '<div class="detail-notice">Codex CLI is not detected in TEDDY’s environment. Install and authenticate Codex CLI, restart the backend, and refresh status to enable the coding worker.</div>')
+            : '<div class="detail-notice">Codex CLI is not detected in TEDDY’s environment. In the Codespace terminal, run:<pre>npm install -g @openai/codex@latest\ncodex login</pre>Then restart TEDDY and refresh status. <a href="https://developers.openai.com/codex/cli/" target="_blank" rel="noreferrer">Official CLI guide ↗</a></div>')
         : '<div class="detail-notice">This coding task is blocked from automatic execution by its risk or approval flags.</div>';
     } else if (task.status === "running") {
       workerSection = '<div class="worker-status"><span class="activity-live-dot"></span><strong>Agent running</strong><span>Refreshing status automatically</span></div>';
