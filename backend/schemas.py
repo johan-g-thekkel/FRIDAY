@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 TaskStatus = Literal["planned", "failed"]
 TaskCategory = Literal["coding", "research", "iot", "personal", "creative", "general"]
 TaskRisk = Literal["low", "medium", "high", "critical"]
-ModelRoute = Literal["auto", "nebius", "nvidia_nim", "claude_fable"]
+ModelRoute = Literal["auto", "nebius", "nvidia_nim", "openai_compatible", "claude_fable"]
 
 
 class TaskCreate(BaseModel):
