@@ -7,9 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import get_task, init_db, insert_task, list_tasks
 from backend.integration_registry import list_integrations
-from backend.skill_registry import list_skill_metadata
 from backend.model_router import create_plan, ModelProviderUnavailableForSkills
-from backend.skill_registry import SkillNotApprovedError
+from backend.skill_registry import list_skill_metadata, SkillNotApprovedError
 from backend.schemas import BackendStatus, TaskCreate, TaskResponse
 from backend.settings import get_settings
 
