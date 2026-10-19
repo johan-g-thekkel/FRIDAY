@@ -79,6 +79,7 @@ def test_integrations_endpoint_reports_status(tmp_path):
             "vulk_mcp",
             "cl4r1t4s_prompt_archive",
         }.issubset(by_id.keys())
+        assert by_id["nvidia_nim"]["status"] == "needs_setup"
         assert by_id["blynk"]["status"] == "firmware_library_received_backend_adapter_pending"
         assert by_id["cl4r1t4s_prompt_archive"]["status"] == "quarantined_not_enabled"
         assert all(item.get("status") for item in items)
