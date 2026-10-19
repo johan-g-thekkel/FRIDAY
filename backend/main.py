@@ -90,7 +90,7 @@ async def model_routes():
                 "name": "Automatic",
                 "available": True,
                 "model": None,
-                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius model or the deterministic local fallback.",
+                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius or NVIDIA NIM model, or the deterministic local fallback.",
             },
             {
                 "id": "nebius",
@@ -104,6 +104,17 @@ async def model_routes():
                 "details": "Uses the exact NEBIUS_MODEL value. This may be a Nemotron model if that exact ID is available in the user's Token Factory account.",
             },
             {
+                "id": "nvidia_nim",
+                "name": (
+                    "NVIDIA Nemotron (NIM)"
+                    if current.nvidia_model and "nemotron" in current.nvidia_model.casefold()
+                    else "NVIDIA NIM"
+                ),
+                "available": current.nvidia_ready,
+                "model": current.nvidia_model if current.nvidia_ready else None,
+                "details": "Uses the exact NVIDIA_MODEL value at NVIDIA_BASE_URL. Configure a supported model ID and NVIDIA API key before selecting this route.",
+            },
+            {
                 "id": "claude_fable",
                 "name": "Claude Fable 5.1",
                 "available": current.claude_fable_ready,
@@ -111,7 +122,7 @@ async def model_routes():
                 "details": "Optional premium reasoning route; it is disabled by default and remains behind a prompt-size and approximate-cost guard.",
             },
         ],
-        "note": "Hermes, Codex, Claude Code, Nex-N2.5, Needle 3, and GLM-V require separate runtime/provider adapters and are not yet selectable from this model-route endpoint.",
+        "note": "NVIDIA NIM supports configured compatible chat models (including Nemotron where available). Hermes, Codex, Claude Code, Nex-N2.5, Needle 3, and GLM-V still require separate runtime/provider adapters and are not yet selectable from this model-route endpoint.",
     }
 
 
