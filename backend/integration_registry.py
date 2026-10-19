@@ -58,6 +58,14 @@ def list_integrations() -> list[dict[str, Any]]:
             "details": "Requires NVIDIA_API_KEY and an exact NVIDIA_MODEL ID. Credentials are never returned by this endpoint.",
         },
         {
+            "id": "openai_compatible",
+            "name": "Custom OpenAI-Compatible Model",
+            "kind": "model_provider",
+            "status": "configured_not_tested" if settings.openai_compatible_ready else "needs_setup",
+            "purpose": "Connect additional served models without changing TEDDY's router",
+            "details": "Requires OPENAI_COMPATIBLE_API_KEY, OPENAI_COMPATIBLE_BASE_URL, and OPENAI_COMPATIBLE_MODEL. This is an endpoint adapter, not a model download.",
+        },
+        {
             "id": "claude_fable_5_1",
             "name": "Claude Fable 5.1",
             "kind": "model_provider",
