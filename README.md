@@ -66,6 +66,14 @@ List actual integration readiness:
 curl http://127.0.0.1:8000/api/v1/integrations
 ```
 
+List metadata for local imported skills (does not activate or execute them):
+
+```bash
+curl http://127.0.0.1:8000/api/v1/skills
+```
+
+Set `SKILLS_ROOT=./skills/imported` in `.env` or leave the default. Copy reviewed skill folders into that local directory; it is ignored by Git so your imported skill content is not published automatically. The endpoint reads only small `SKILL.md` metadata and marks every discovered skill `disabled_pending_review`.
+
 The integration registry does not execute agents or expose credentials. A command being installed is not enough to mark it fully operational.
 
 Get a task by its ID:
