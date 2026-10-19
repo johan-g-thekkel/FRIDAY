@@ -428,7 +428,7 @@ def test_interrupted_agent_tasks_are_recovered_on_restart(tmp_path):
 def test_requested_skill_ids_are_persisted_with_task(tmp_path, monkeypatch):
     import backend.main as main_module
 
-    async def fake_plan(prompt, requested_skill_ids=None, requested_route="auto"):
+    async def fake_plan(prompt, requested_skill_ids=None, requested_route="auto", additional_context=None):
         return {
             "category": "coding", "provider": "test-provider", "model": "test-model",
             "risk": "medium", "approval_required": False, "plan": ["Implement"],
@@ -447,3 +447,49 @@ def test_requested_skill_ids_are_persisted_with_task(tmp_path, monkeypatch):
         assert body["skill_ids"] == [requested_id]
         fetched = client.get(f"/api/v1/tasks/{body['id']}").json()
         assert fetched["skill_ids"] == [requested_id]
+
+
+def test_bot_crud_and_task_attachment(tmp_path, monkeypatch):
+    import backend.main as main_module
+
+    async def fake_plan(prompt, requested_skill_ids=None, requested_route="auto", additional_context=None):
+        return {
+            "category": "coding", "provider": "local-fallback", "model": None,
+            "risk": "medium", "approval_required": False,
+            "plan": ["Inspect code", "Implement and test"],
+            "skills_used": [],
+        }
+
+    monkeypatch.setattr(main_module, "create_plan", fake_plan)
+    with _client_for_test(tmp_path) as client:
+        created = client.post("/api/v1/bots", json={
+            "name": "Python Helper",
+            "description": "Works on small Python utilities.",
+            "instructions": "Prefer clear Python code and focused unit tests.",
+            "memory": "Use beginner-friendly explanations.",
+            "default_model_route": "auto",
+            "runtime": "plan_only",
+        })
+        assert created.status_code == 200
+        bot = created.json()
+        assert bot["enabled"] is True
+        assert bot["runtime"] == "plan_only"
+        assert client.get("/api/v1/bots").json()[0]["id"] == bot["id"]
+
+        task = client.post("/api/v1/tasks", json={
+            "prompt": "Build a Python calculator",
+            "bot_id": bot["id"],
+        })
+        assert task.status_code == 200
+        assert task.json()["bot_id"] == bot["id"]
+        assert task.json()["bot_name"] == "Python Helper"
+        assert client.get(f"/api/v1/tasks/{task.json()['id']}").json()["bot_runtime"] == "plan_only"
+
+        changed = client.patch(f"/api/v1/bots/{bot['id']}", json={"runtime": "codex_cli", "enabled": False})
+        assert changed.status_code == 200
+        assert changed.json()["runtime"] == "codex_cli"
+        assert changed.json()["enabled"] is False
+
+        deleted = client.delete(f"/api/v1/bots/{bot['id']}")
+        assert deleted.status_code == 200
+        assert client.get("/api/v1/bots").json() == []

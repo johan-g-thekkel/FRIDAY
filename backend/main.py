@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import claim_task_for_agent, fail_interrupted_agent_tasks, get_task, init_db, insert_task, list_tasks, update_task, utc_now
+from backend.database import claim_task_for_agent, create_bot, delete_bot, fail_interrupted_agent_tasks, get_bot, get_task, init_db, insert_task, list_bots, list_tasks, update_bot, update_task, utc_now
 from backend.integration_registry import list_integrations
 from backend.model_profiles import public_model_profiles
 from backend.model_router import (
@@ -17,7 +17,7 @@ from backend.model_router import (
     ModelRouteUnavailable,
 )
 from backend.skill_registry import list_skill_metadata, SkillNotApprovedError
-from backend.schemas import BackendStatus, TaskCreate, TaskResponse
+from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, TaskCreate, TaskResponse
 from backend.settings import get_settings
 from backend.agent_runner import agent_available, run_codex_task
 
@@ -171,6 +171,63 @@ async def integration_status():
     return {"integrations": list_integrations()}
 
 
+@app.get("/api/v1/bots", response_model=list[BotResponse], tags=["bots"])
+async def get_bots():
+    """List saved operator-defined bot profiles."""
+    return [BotResponse(**bot) for bot in list_bots()]
+
+
+@app.post("/api/v1/bots", response_model=BotResponse, tags=["bots"])
+async def add_bot(request: BotCreate):
+    name = request.name.strip()
+    instructions = request.instructions.strip()
+    if not name or not instructions:
+        raise HTTPException(status_code=422, detail="Bot name and instructions cannot be blank.")
+    now = utc_now()
+    bot = {
+        "id": str(uuid4()), "name": name, "description": request.description.strip(),
+        "instructions": instructions, "memory": request.memory.strip(),
+        "default_model_route": request.default_model_route, "runtime": request.runtime,
+        "skill_ids": request.skill_ids, "enabled": request.enabled,
+        "created_at": now, "updated_at": now,
+    }
+    try:
+        return BotResponse(**create_bot(bot))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Could not save this bot profile.") from exc
+
+
+@app.patch("/api/v1/bots/{bot_id}", response_model=BotResponse, tags=["bots"])
+async def edit_bot(bot_id: str, request: BotUpdate):
+    existing = get_bot(bot_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Bot not found.")
+    updates = request.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=422, detail="Provide at least one bot field to update.")
+    if "name" in updates:
+        updates["name"] = (updates["name"] or "").strip()
+        if not updates["name"]:
+            raise HTTPException(status_code=422, detail="Bot name cannot be blank.")
+    if "instructions" in updates:
+        updates["instructions"] = (updates["instructions"] or "").strip()
+        if not updates["instructions"]:
+            raise HTTPException(status_code=422, detail="Bot instructions cannot be blank.")
+    if "description" in updates:
+        updates["description"] = (updates["description"] or "").strip()
+    if "memory" in updates:
+        updates["memory"] = (updates["memory"] or "").strip()
+    update_bot(bot_id, **updates)
+    return BotResponse(**get_bot(bot_id))
+
+
+@app.delete("/api/v1/bots/{bot_id}", tags=["bots"])
+async def remove_bot(bot_id: str):
+    if not delete_bot(bot_id):
+        raise HTTPException(status_code=404, detail="Bot not found.")
+    return {"deleted": True, "id": bot_id}
+
+
 @app.get("/api/v1/skills", tags=["skills"])
 async def skill_inventory():
     """Return imported skill metadata; discovered skills are never enabled automatically."""
@@ -184,10 +241,26 @@ async def create_task(request: TaskCreate):
         raise HTTPException(status_code=422, detail="Prompt cannot be blank.")
 
     try:
+        bot = get_bot(request.bot_id) if request.bot_id else None
+        if request.bot_id and bot is None:
+            raise HTTPException(status_code=404, detail="Selected bot was not found.")
+        if bot and not bot["enabled"]:
+            raise HTTPException(status_code=409, detail="Selected bot is disabled.")
+        selected_skill_ids = list(dict.fromkeys((bot["skill_ids"] if bot else []) + request.skill_ids))
+        if len(selected_skill_ids) > 5:
+            raise HTTPException(status_code=422, detail="The bot and task selections exceed the five-skill request limit.")
+        route = request.model_route
+        if route == "auto" and bot and bot["default_model_route"] != "auto":
+            route = bot["default_model_route"]
+        bot_context = json.dumps({
+            "name": bot["name"], "description": bot["description"],
+            "instructions": bot["instructions"], "memory": bot["memory"],
+        }, ensure_ascii=False) if bot else None
         plan = await create_plan(
             prompt,
-            requested_skill_ids=request.skill_ids,
-            requested_route=request.model_route,
+            requested_skill_ids=selected_skill_ids,
+            requested_route=route,
+            additional_context=bot_context,
         )
     except SkillNotApprovedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -219,7 +292,11 @@ async def create_task(request: TaskCreate):
         "plan": plan["plan"],
         "created_at": now,
         "skills_used": plan.get("skills_used", []),
-        "skill_ids": request.skill_ids,
+        "skill_ids": selected_skill_ids,
+        "bot_id": bot["id"] if bot else None,
+        "bot_name": bot["name"] if bot else None,
+        "bot_runtime": bot["runtime"] if bot else None,
+        "bot_context": bot_context,
         "execution_mode": "plan_only",
         "agent_name": None,
         "workspace_path": None,
@@ -244,6 +321,8 @@ async def run_task_with_agent(task_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=409, detail="This task has already been submitted to an agent or is not in a runnable state.")
     if task["category"] != "coding":
         raise HTTPException(status_code=409, detail="Only coding tasks can be sent to the isolated coding worker. Other task categories remain plan-only.")
+    if task.get("bot_id") and task.get("bot_runtime") != "codex_cli":
+        raise HTTPException(status_code=409, detail="This bot is configured for planning only. Edit its runtime to Codex CLI before launching an agent run.")
     if task["risk"] in {"high", "critical"} or task["approval_required"]:
         raise HTTPException(status_code=409, detail="This task is marked high-risk or requires approval. The coding worker will not run it automatically.")
     if not agent_available():

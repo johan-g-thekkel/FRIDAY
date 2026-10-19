@@ -30,10 +30,12 @@ def init_db() -> None:
                 status TEXT NOT NULL, category TEXT NOT NULL, provider TEXT NOT NULL,
                 model TEXT, risk TEXT NOT NULL, approval_required INTEGER NOT NULL,
                 plan_json TEXT NOT NULL, created_at TEXT NOT NULL,
-                skills_used_json TEXT NOT NULL DEFAULT '[]', skill_ids_json TEXT NOT NULL DEFAULT '[]',
+                skills_used_json TEXT NOT NULL DEFAULT '[]',
+                skill_ids_json TEXT NOT NULL DEFAULT '[]',
                 execution_mode TEXT NOT NULL DEFAULT 'plan_only', agent_name TEXT,
                 workspace_path TEXT, result_text TEXT,
-                execution_log_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT
+                execution_log_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT,
+                bot_id TEXT, bot_name TEXT, bot_runtime TEXT, bot_context TEXT
             )
             """
         )
@@ -47,10 +49,28 @@ def init_db() -> None:
             "result_text": "TEXT",
             "execution_log_json": "TEXT NOT NULL DEFAULT '[]'",
             "updated_at": "TEXT",
+            "bot_id": "TEXT",
+            "bot_name": "TEXT",
+            "bot_runtime": "TEXT",
+            "bot_context": "TEXT",
         }
         for column, sql_type in migrations.items():
             if column not in columns:
                 connection.execute(f"ALTER TABLE tasks ADD COLUMN {column} {sql_type}")
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bots (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+                instructions TEXT NOT NULL, memory TEXT NOT NULL DEFAULT '',
+                default_model_route TEXT NOT NULL DEFAULT 'auto',
+                runtime TEXT NOT NULL DEFAULT 'plan_only',
+                skill_ids_json TEXT NOT NULL DEFAULT '[]',
+                enabled INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            )
+            """
+        )
 
 
 def insert_task(task: dict[str, Any]) -> None:
@@ -61,23 +81,24 @@ def insert_task(task: dict[str, Any]) -> None:
                 id, session_id, prompt, status, category, provider, model, risk,
                 approval_required, plan_json, created_at, skills_used_json, skill_ids_json,
                 execution_mode, agent_name, workspace_path, result_text,
-                execution_log_json, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                execution_log_json, updated_at, bot_id, bot_name, bot_runtime, bot_context
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task["id"], task["session_id"], task["prompt"], task["status"],
                 task["category"], task["provider"], task["model"], task["risk"],
                 int(task["approval_required"]), json.dumps(task["plan"]),
                 task["created_at"], json.dumps(task.get("skills_used", [])),
-                json.dumps(task.get("skill_ids", [])), task.get("execution_mode", "plan_only"), task.get("agent_name"),
-                task.get("workspace_path"), task.get("result_text"),
+                json.dumps(task.get("skill_ids", [])), task.get("execution_mode", "plan_only"),
+                task.get("agent_name"), task.get("workspace_path"), task.get("result_text"),
                 json.dumps(task.get("execution_log", [])), task.get("updated_at"),
+                task.get("bot_id"), task.get("bot_name"), task.get("bot_runtime"),
+                task.get("bot_context"),
             ),
         )
 
 
 def update_task(task_id: str, **fields: Any) -> bool:
-    """Update only allowed lifecycle fields; arbitrary SQL columns are never accepted."""
     allowed = {
         "status", "execution_mode", "agent_name", "workspace_path",
         "result_text", "execution_log", "updated_at",
@@ -104,7 +125,7 @@ def fail_interrupted_agent_tasks() -> int:
     """Mark workers interrupted by a server restart as failed while retaining their worktrees."""
     with _connect() as connection:
         rows = connection.execute(
-            "SELECT id, execution_log_json, result_text FROM tasks "
+            "SELECT id, execution_log_json FROM tasks "
             "WHERE status = 'running' AND execution_mode = 'agent'"
         ).fetchall()
         for row in rows:
@@ -146,6 +167,10 @@ def _row_to_task(row: sqlite3.Row) -> dict[str, Any]:
     task.setdefault("workspace_path", None)
     task.setdefault("result_text", None)
     task.setdefault("updated_at", None)
+    task.setdefault("bot_id", None)
+    task.setdefault("bot_name", None)
+    task.setdefault("bot_runtime", None)
+    task.setdefault("bot_context", None)
     return task
 
 
@@ -162,3 +187,72 @@ def list_tasks(limit: int = 30) -> list[dict[str, Any]]:
             (max(1, min(limit, 100)),),
         ).fetchall()
     return [_row_to_task(row) for row in rows]
+
+
+def _row_to_bot(row: sqlite3.Row) -> dict[str, Any]:
+    bot = dict(row)
+    bot["enabled"] = bool(bot["enabled"])
+    bot["skill_ids"] = json.loads(bot.pop("skill_ids_json", "[]") or "[]")
+    return bot
+
+
+def create_bot(bot: dict[str, Any]) -> dict[str, Any]:
+    with _connect() as connection:
+        connection.execute(
+            """INSERT INTO bots (
+                id, name, description, instructions, memory, default_model_route,
+                runtime, skill_ids_json, enabled, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (bot["id"], bot["name"], bot.get("description", ""), bot["instructions"],
+             bot.get("memory", ""), bot.get("default_model_route", "auto"),
+             bot.get("runtime", "plan_only"), json.dumps(bot.get("skill_ids", [])),
+             int(bot.get("enabled", True)), bot["created_at"], bot["updated_at"]),
+        )
+    return get_bot(bot["id"])  # type: ignore[return-value]
+
+
+def get_bot(bot_id: str) -> dict[str, Any] | None:
+    with _connect() as connection:
+        row = connection.execute("SELECT * FROM bots WHERE id = ?", (bot_id,)).fetchone()
+    return _row_to_bot(row) if row else None
+
+
+def list_bots(limit: int = 100) -> list[dict[str, Any]]:
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT * FROM bots ORDER BY created_at DESC LIMIT ?",
+            (max(1, min(limit, 100)),),
+        ).fetchall()
+    return [_row_to_bot(row) for row in rows]
+
+
+def update_bot(bot_id: str, **fields: Any) -> bool:
+    allowed = {
+        "name", "description", "instructions", "memory", "default_model_route",
+        "runtime", "skill_ids", "enabled",
+    }
+    updates = {key: value for key, value in fields.items() if key in allowed}
+    if not updates:
+        return False
+    assignments: list[str] = []
+    values: list[Any] = []
+    for key, value in updates.items():
+        if key == "skill_ids":
+            key, value = "skill_ids_json", json.dumps(value or [])
+        elif key == "enabled":
+            value = int(bool(value))
+        assignments.append(f"{key} = ?")
+        values.append(value)
+    assignments.append("updated_at = ?")
+    values.extend([utc_now(), bot_id])
+    with _connect() as connection:
+        cursor = connection.execute(
+            f"UPDATE bots SET {', '.join(assignments)} WHERE id = ?", tuple(values)
+        )
+        return cursor.rowcount > 0
+
+
+def delete_bot(bot_id: str) -> bool:
+    with _connect() as connection:
+        cursor = connection.execute("DELETE FROM bots WHERE id = ?", (bot_id,))
+        return cursor.rowcount > 0
