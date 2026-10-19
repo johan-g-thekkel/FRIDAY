@@ -128,6 +128,7 @@ Install and authenticate the official Codex CLI in the same environment that run
 Check that the CLI is visible to the backend process:
 
 ```bash
+npm install -g @openai/codex@latest
 codex --version
 codex login
 ```
@@ -138,7 +139,7 @@ Create a coding task from the command centre. In Task History, open a coding tas
 curl -X POST http://127.0.0.1:8000/api/v1/tasks/TASK_ID/run
 ```
 
-The endpoint rejects non-coding, high-risk, approval-required, duplicate, and unavailable-agent runs. It creates a detached worktree under `.teddy-worktrees/TASK_ID`, asks Codex to work within its `workspace-write` sandbox, sets a configurable timeout (`AGENT_TIMEOUT_SECONDS`, default 900 seconds), saves safe event metadata and the final agent message, and keeps the worktree for review. The original working tree is not changed by the worker, and TEDDY does not auto-merge or commit the changes. On successful agent exit, task status means the CLI process completed—not independent proof that every test passed. Verify the reported commands/results and inspect the diff before manually applying changes.
+The endpoint rejects non-coding, high-risk, approval-required, duplicate, and unavailable-agent runs. It creates a detached worktree under `.teddy-worktrees/TASK_ID`, asks Codex to work within its `workspace-write` sandbox with sandbox network access explicitly disabled, does not pass TEDDY provider API keys into the worker environment, sets a configurable timeout (`AGENT_TIMEOUT_SECONDS`, default 900 seconds), saves safe event metadata and the final agent message, and keeps the worktree for review. The original working tree is not changed by the worker, and TEDDY does not auto-merge or commit the changes. On successful agent exit, task status means the CLI process completed—not independent proof that every test passed. Verify the reported commands/results and inspect the diff before manually applying changes.
 
 This prototype is intended for one trusted local operator and has no user authentication layer. Do not expose the agent-run endpoint to untrusted users or a public network.
 

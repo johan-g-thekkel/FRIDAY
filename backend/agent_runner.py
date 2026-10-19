@@ -27,7 +27,7 @@ def _restricted_child_environment() -> dict[str, str]:
     # (Nebius, NVIDIA, Anthropic, Blynk, messaging, etc.) into the coding process.
     allowed = {
         "PATH", "HOME", "USER", "LOGNAME", "SHELL", "TERM", "LANG",
-        "LC_ALL", "TMPDIR", "XDG_CONFIG_HOME", "CODEX_HOME", "OPENAI_API_KEY",
+        "LC_ALL", "TMPDIR", "XDG_CONFIG_HOME", "CODEX_HOME",
         "NO_COLOR", "FORCE_COLOR",
     }
     return {key: value for key, value in os.environ.items() if key in allowed}
@@ -149,12 +149,13 @@ RULES:
 """
     await _append_log(task_id, [
         "Created detached Git worktree from the current HEAD.",
-        "Starting Codex with workspace-write sandbox; the worker will not auto-merge changes.",
+        "Starting Codex with workspace-write sandbox and network access explicitly disabled; the worker will not auto-merge changes.",
     ])
     command = [
         shutil.which("codex") or "codex", "exec",
         "--sandbox", "workspace-write",
         "--ask-for-approval", "never",
+        "--config", "sandbox_workspace_write.network_access=false",
         "--json", "--output-last-message", str(result_file), "-",
     ]
     timeout = max(60, min(get_settings().agent_timeout_seconds, 1800))
