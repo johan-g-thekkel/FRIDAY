@@ -85,7 +85,19 @@ python scripts/import_skill_metadata.py incoming/teddy-skill-candidates.zip
 curl http://127.0.0.1:8000/api/v1/skills
 ```
 
-The bundle contains 316 canonical `SKILL.md` files from ECC, Astra, GLM-V, and REA plus source-license files and a provenance manifest. It intentionally excludes executable scripts, model weights, environment files, and CL4R1T4S prompt dumps. The importer copies only canonical `SKILL.md` files into the local ignored directory `skills/imported/`; it does not install dependencies, execute scripts, or enable skills. All discovered skills remain `disabled_pending_review`. Review a skill's full source, required tools, license, and referenced resources before enabling it. The original `ECC-main.zip` and `Desktop2222.zip` archives can also be scanned directly if copied into the Codespace.
+The bundle contains 316 canonical `SKILL.md` files from ECC, Astra, GLM-V, and REA plus source-license files and a provenance manifest. It intentionally excludes executable scripts, model weights, environment files, and CL4R1T4S prompt dumps. The importer copies only canonical `SKILL.md` files into the local ignored directory `skills/imported/`; it does not install dependencies, execute scripts, or enable skills. All discovered skills start as `disabled_pending_review`. The original `ECC-main.zip` and `Desktop2222.zip` archives can also be scanned directly if copied into the Codespace.
+
+Review and enable a skill from the terminal:
+
+```bash
+python scripts/skill_admin.py list
+python scripts/skill_admin.py show SKILL_ID
+python scripts/skill_admin.py enable SKILL_ID
+```
+
+The enable command prints the skill content and requires you to type `ENABLE SKILL_ID` after review. It writes a local, gitignored hash-pinned policy; if the skill file changes, it is disabled automatically until reviewed again. You can use `python scripts/skill_admin.py disable SKILL_ID` at any time.
+
+When a provider is configured, TEDDY selects at most two hash-approved skills based on prompt/description keyword overlap, capped at 6,000 total skill-content characters by default. The model receives them as untrusted supplemental guidance, not system policy. POST `/api/v1/tasks` also accepts `skill_ids` for explicit selections; requests for unapproved skills are rejected. The task response records `skills_used`. With only the local fallback active, skills are not represented as used because no model receives their instructions.
 
 Get a task by its ID:
 
