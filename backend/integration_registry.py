@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+from pathlib import Path
 from typing import Any
 
 from backend.settings import get_settings
@@ -194,8 +195,12 @@ def list_integrations() -> list[dict[str, Any]]:
             "id": "user_skills",
             "name": "User Skills Library",
             "kind": "skills_registry",
-            "status": "skill_archives_received_inventory_pending",
+            "status": (
+                "metadata_only_inventory_available"
+                if Path(settings.skills_root).is_dir()
+                else "archives_reviewed_not_imported"
+            ),
             "purpose": "Discover and index skill packages for compatible agents",
-            "details": "ECC, Astra, GLM-V, and REA contain candidate skill definitions. Contents must be indexed, deduplicated, reviewed, and disabled by default; upload never triggers execution.",
+            "details": "ECC has 292 core skill definitions plus 9 Astra, 10 GLM-V and 5 REA skill candidates. Place reviewed folders under SKILLS_ROOT for metadata discovery; skills stay disabled and their scripts are never run by the inventory API.",
         },
     ]
