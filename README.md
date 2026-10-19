@@ -122,6 +122,16 @@ When no model credentials are configured, TEDDY uses a deterministic fallback pl
 3. Set `NEBIUS_MODEL` to the exact model ID available in your Token Factory account.
 4. Keep `.env` out of Git.
 
+Optional: configure NVIDIA NIM as a separate route (for example, a Nemotron model supported by your NVIDIA API account):
+
+```dotenv
+NVIDIA_API_KEY=your_key_here
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_MODEL=your_exact_nvidia_model_id
+```
+
+Then restart the backend and check `GET /api/v1/models`. Select `model_route: "nvidia_nim"` for a task to use that endpoint. NVIDIA's NIM API uses the OpenAI-compatible `/v1/chat/completions` interface; supported model IDs and access vary by model/account ([official API reference](https://docs.api.nvidia.com/nim/reference/llm-apis)).
+
 The configured default base URL is `https://api.tokenfactory.nebius.com/v1`.
 
 The backend calls the configured model for task planning only. Model output is validated before it is stored. External actions and tool execution remain disabled.
