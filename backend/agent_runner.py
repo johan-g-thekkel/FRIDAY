@@ -40,14 +40,20 @@ def inspect_codex_worktree_changes(task_id: str) -> dict[str, object]:
     if task.get("status") not in {"completed", "failed"}:
         raise WorktreeInspectionError("This task is not in a completed or failed agent state.")
 
-    worktree_root = (REPO_ROOT / ".teddy-worktrees").resolve()
-    expected = (worktree_root / task_id).resolve()
+    worktree_root = REPO_ROOT / ".teddy-worktrees"
+    if worktree_root.is_symlink():
+        raise WorktreeInspectionError("TEDDY's worktree directory is a symlink; refusing to inspect it.")
+    worktree_root = worktree_root.resolve()
+    expected_path = worktree_root / task_id
+    recorded_path = Path(str(task.get("workspace_path") or ""))
+    if recorded_path.is_symlink() or expected_path.is_symlink():
+        raise WorktreeInspectionError("The recorded worktree path is a symlink; refusing to inspect it.")
     try:
-        worktree = Path(str(task.get("workspace_path") or "")).resolve(strict=True)
+        worktree = recorded_path.resolve(strict=True)
         worktree.relative_to(worktree_root)
     except (OSError, ValueError, RuntimeError) as exc:
         raise WorktreeInspectionError("The recorded worktree is missing or outside TEDDY's isolated worktree directory.") from exc
-    if worktree != expected or worktree.is_symlink() or not worktree.is_dir():
+    if worktree != expected_path.resolve() or not worktree.is_dir():
         raise WorktreeInspectionError("The recorded worktree path failed the safety check.")
 
     def run_git(args: list[str]) -> bytes:
@@ -70,7 +76,7 @@ def inspect_codex_worktree_changes(task_id: str) -> dict[str, object]:
         return result.stdout
 
     status_bytes = run_git(["status", "--short", "--untracked-files=all"])
-    tracked_diff = run_git(["diff", "--no-ext-diff", "--no-color", "--unified=2", "--"])
+    tracked_diff = run_git(["diff", "--no-ext-diff", "--no-color", "--unified=2", "HEAD", "--"])
     untracked_bytes = run_git(["ls-files", "--others", "--exclude-standard", "-z"])
     remaining = MAX_DIFF_BYTES
     fragments: list[str] = []
