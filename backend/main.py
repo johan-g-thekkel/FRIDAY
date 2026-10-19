@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import get_task, init_db, insert_task, list_tasks, update_task, utc_now
+from backend.database import claim_task_for_agent, get_task, init_db, insert_task, list_tasks, update_task, utc_now
 from backend.integration_registry import list_integrations
 from backend.model_profiles import public_model_profiles
 from backend.model_router import (
@@ -34,8 +34,8 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 app = FastAPI(
     title="TEDDY API",
     description=(
-        "TEDDY's task-planning backend. The initial version plans tasks and "
-        "stores them; execution tools will be added behind policy checks."
+        "TEDDY's task planner, persistent task history, and optional sandboxed Codex coding worker. "
+        "Other external actions remain disabled unless separately integrated."
     ),
     version="0.1.0",
     lifespan=lifespan,
@@ -248,8 +248,8 @@ async def run_task_with_agent(task_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=409, detail="OpenAI Codex CLI is not installed or not on PATH. Install and authenticate Codex CLI, then restart TEDDY.")
     log = list(task.get("execution_log", []))
     log.append("Queued for Codex CLI in a separate Git worktree. The main working tree will not be edited by this run.")
-    update_task(task_id, status="running", execution_mode="agent",
-                agent_name="OpenAI Codex CLI", execution_log=log[-80:], updated_at=utc_now())
+    if not claim_task_for_agent(task_id, "OpenAI Codex CLI", log):
+        raise HTTPException(status_code=409, detail="Another request already claimed this task. Refresh task history and inspect its status.")
     updated = get_task(task_id)
     background_tasks.add_task(run_codex_task, task_id)
     return TaskResponse(**updated)

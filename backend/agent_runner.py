@@ -197,7 +197,8 @@ RULES:
         if not result_text:
             result_text = f"Codex exited with code {process.returncode}; inspect task event log and worktree for details."
         if stderr_text.strip():
-            await _append_log(task_id, ["Codex stderr: " + stderr_text.strip()[-1200:]])
+            # Diagnostics can accidentally echo private paths or sensitive request context.
+            await _append_log(task_id, ["Codex emitted diagnostic output; raw stderr was not stored."])
         if process.returncode == 0:
             await _append_log(task_id, ["Codex process exited successfully. Independently review the claimed test results and inspect the diff."])
             await asyncio.to_thread(update_task, task_id, status="completed", result_text=result_text, updated_at=utc_now())

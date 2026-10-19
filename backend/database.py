@@ -99,6 +99,19 @@ def update_task(task_id: str, **fields: Any) -> bool:
         return cursor.rowcount > 0
 
 
+def claim_task_for_agent(task_id: str, agent_name: str, log_entries: list[str]) -> bool:
+    """Atomically claim a planned task so concurrent requests cannot launch two workers."""
+    with _connect() as connection:
+        cursor = connection.execute(
+            """UPDATE tasks
+               SET status = 'running', execution_mode = 'agent', agent_name = ?,
+                   execution_log_json = ?, updated_at = ?
+               WHERE id = ? AND status = 'planned' AND execution_mode = 'plan_only'""",
+            (agent_name, json.dumps(log_entries[-80:]), utc_now(), task_id),
+        )
+        return cursor.rowcount == 1
+
+
 def _row_to_task(row: sqlite3.Row) -> dict[str, Any]:
     task = dict(row)
     task["approval_required"] = bool(task["approval_required"])
