@@ -1,0 +1,22 @@
+[
+  {
+    "id": "nex_n2_5",
+    "name": "Nex-N2.5",
+    "base_url": "https://YOUR_OPENAI_COMPATIBLE_ENDPOINT/v1",
+    "model": "YOUR_EXACT_MODEL_ID",
+    "api_key_env": "NEX_N2_5_API_KEY",
+    "priority": 50,
+    "capabilities": ["text", "reasoning", "coding", "tool-calling"],
+    "enabled": true
+  },
+  {
+    "id": "glm_v",
+    "name": "GLM-V",
+    "base_url": "https://YOUR_OPENAI_COMPATIBLE_ENDPOINT/v1",
+    "model": "YOUR_EXACT_MODEL_ID",
+    "api_key_env": "GLM_V_API_KEY",
+    "priority": 60,
+    "capabilities": ["text", "vision", "reasoning"],
+    "enabled": false
+  }
+]
