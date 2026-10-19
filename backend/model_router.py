@@ -238,17 +238,25 @@ async def create_plan(
     requested_route: str = "auto",
 ) -> dict[str, Any]:
     settings = get_settings()
-    if requested_route not in {"auto", "nebius", "claude_fable"}:
-        raise ModelRouteUnavailable("Unknown model route. Choose auto, nebius, or claude_fable.")
+    if requested_route not in {"auto", "nebius", "nvidia_nim", "claude_fable"}:
+        raise ModelRouteUnavailable(
+            "Unknown model route. Choose auto, nebius, nvidia_nim, or claude_fable."
+        )
     if requested_route == "nebius" and not settings.nebius_ready:
         raise ModelRouteUnavailable(
             "Nebius route is not configured. Set NEBIUS_API_KEY and NEBIUS_MODEL."
+        )
+    if requested_route == "nvidia_nim" and not settings.nvidia_ready:
+        raise ModelRouteUnavailable(
+            "NVIDIA NIM route is not configured. Set NVIDIA_API_KEY and NVIDIA_MODEL."
         )
     if requested_route == "claude_fable" and not settings.claude_fable_ready:
         raise ModelRouteUnavailable(
             "Claude Fable is disabled or not configured. Set ANTHROPIC_API_KEY and explicitly enable CLAUDE_FABLE_ENABLED."
         )
-    provider_available = settings.nebius_ready or settings.claude_fable_ready
+    provider_available = (
+        settings.nebius_ready or settings.nvidia_ready or settings.claude_fable_ready
+    )
     selected_skills: list[dict[str, str]] = []
     if provider_available:
         selected_skills = get_enabled_skill_context(prompt, requested_skill_ids)
@@ -272,12 +280,18 @@ async def create_plan(
                 "Claude Fable request exceeds the configured prompt or estimated-cost guard."
             )
         use_fable = True
-    elif requested_route == "nebius":
+    elif requested_route in {"nebius", "nvidia_nim"}:
         use_fable = False
     else:
         use_fable = _requires_claude_fable(prompt, settings, skill_context_chars)
 
-    if requested_skill_ids and selected_skills and not settings.nebius_ready and not use_fable:
+    if (
+        requested_skill_ids
+        and selected_skills
+        and not settings.nebius_ready
+        and not settings.nvidia_ready
+        and not use_fable
+    ):
         raise ModelProviderUnavailableForSkills(
             "The selected skill needs a configured inference route. Claude Fable is only selected for complex tasks; configure Nebius or submit a complex reasoning task."
         )
@@ -314,7 +328,7 @@ async def create_plan(
         finally:
             await client.close()
 
-    if settings.nebius_ready:
+    if settings.nebius_ready and requested_route in {"auto", "nebius"}:
         client = AsyncOpenAI(
             base_url=settings.nebius_base_url.rstrip("/"),
             api_key=settings.nebius_api_key,
@@ -341,6 +355,38 @@ async def create_plan(
                 data,
                 provider="nebius-token-factory",
                 model=settings.nebius_model,
+                skills_used=skill_names,
+            )
+        finally:
+            await client.close()
+
+    if settings.nvidia_ready and requested_route in {"auto", "nvidia_nim"}:
+        client = AsyncOpenAI(
+            base_url=settings.nvidia_base_url.rstrip("/"),
+            api_key=settings.nvidia_api_key,
+            timeout=45.0,
+            max_retries=1,
+        )
+        try:
+            response = await client.chat.completions.create(
+                model=settings.nvidia_model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.2,
+                max_tokens=900,
+            )
+            raw = response.choices[0].message.content or ""
+            match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+            if not match:
+                raise ValueError("The NVIDIA model returned no JSON task plan.")
+            data = json.loads(match.group(0))
+            return _validate_plan(
+                prompt,
+                data,
+                provider="nvidia-nim",
+                model=settings.nvidia_model,
                 skills_used=skill_names,
             )
         finally:
