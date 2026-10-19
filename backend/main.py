@@ -20,8 +20,8 @@ from backend.model_router import (
     ModelProviderUnavailableForSkills,
     ModelRouteUnavailable,
 )
-from backend.skill_registry import list_skill_metadata, SkillNotApprovedError
-from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, TaskCreate, TaskResponse
+from backend.skill_registry import (\n    disable_skill, enable_skill_after_review, get_skill_detail,\n    list_skill_metadata, SkillApprovalError, SkillNotApprovedError,\n)
+from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, SkillReviewRequest, TaskCreate, TaskResponse
 from backend.settings import get_settings
 from backend.agent_runner import agent_available, run_codex_task
 from scripts.import_skill_metadata import MAX_TOTAL_ARCHIVE_BYTES, import_archive
@@ -291,6 +291,31 @@ async def import_skill_archive(file: UploadFile = File(...)):
 async def skill_inventory():
     """Return imported skill metadata; discovered skills are never enabled automatically."""
     return list_skill_metadata()
+
+
+@app.get("/api/v1/skills/{skill_id}", tags=["skills"])
+async def skill_detail(skill_id: str):
+    detail = get_skill_detail(skill_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Skill not found.")
+    return detail
+
+
+@app.post("/api/v1/skills/{skill_id}/enable", tags=["skills"])
+async def approve_skill(skill_id: str, request: SkillReviewRequest):
+    try:
+        return enable_skill_after_review(skill_id, request.content_sha256, request.confirmation)
+    except SkillReviewError as exc:
+        status_code = 409 if "changed after it was opened" in str(exc) else 422
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+
+@app.post("/api/v1/skills/{skill_id}/disable", tags=["skills"])
+async def disable_skill_route(skill_id: str):
+    try:
+        return disable_skill(skill_id)
+    except SkillReviewError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/api/v1/tasks", response_model=TaskResponse, tags=["tasks"])

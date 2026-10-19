@@ -553,3 +553,66 @@ def test_skill_archive_upload_rejects_unknown_names_and_non_zip(tmp_path):
             files={"file": ("ECC-main.zip", b"not really zip", "application/zip")},
         )
         assert non_zip.status_code == 422
+
+
+def test_ui_skill_review_requires_exact_confirmation_and_pins_hash(tmp_path):
+    import hashlib
+
+    skill_path = tmp_path / "skills" / "ECC" / "verification-loop" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_content = (
+        "---\nname: verification-loop\ndescription: Verify changes with tests.\n---\n"
+        "# Verification Loop\nRun focused tests and report evidence.\n"
+    )
+    skill_path.write_text(skill_content, encoding="utf-8")
+    skill_id = hashlib.sha256("ECC/verification-loop/SKILL.md".encode()).hexdigest()[:16]
+    full_hash = hashlib.sha256(skill_content.encode()).hexdigest()
+
+    with _client_for_test(tmp_path) as client:
+        detail = client.get(f"/api/v1/skills/{skill_id}")
+        assert detail.status_code == 200
+        assert detail.json()["content_sha256"] == full_hash
+        assert "Run focused tests" in detail.json()["content"]
+
+        rejected = client.post(f"/api/v1/skills/{skill_id}/enable", json={
+            "content_sha256": full_hash, "confirmation": "ENABLE wrong-id",
+        })
+        assert rejected.status_code == 422
+
+        enabled = client.post(f"/api/v1/skills/{skill_id}/enable", json={
+            "content_sha256": full_hash, "confirmation": f"ENABLE {skill_id}",
+        })
+        assert enabled.status_code == 200
+        assert enabled.json()["status"] == "enabled_reviewed"
+        assert client.get("/api/v1/skills").json()["skills"][0]["status"] == "enabled_reviewed"
+
+        changed_content = skill_content + "\nAn unreviewed edit.\n"
+        skill_path.write_text(changed_content, encoding="utf-8")
+        assert client.get("/api/v1/skills").json()["skills"][0]["status"] == "changed_since_review"
+        stale = client.post(f"/api/v1/skills/{skill_id}/enable", json={
+            "content_sha256": full_hash, "confirmation": f"ENABLE {skill_id}",
+        })
+        assert stale.status_code == 409
+
+
+def test_ui_can_disable_a_reviewed_skill(tmp_path):
+    import hashlib
+    import json
+
+    skill_path = tmp_path / "skills" / "ECC" / "sample-skill" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    content = "---\nname: sample-skill\ndescription: A safe test skill.\n---\nUse relevant hints.\n"
+    skill_path.write_text(content, encoding="utf-8")
+    skill_id = hashlib.sha256("ECC/sample-skill/SKILL.md".encode()).hexdigest()[:16]
+    policy_path = tmp_path / "data" / "skills-policy.json"
+    policy_path.parent.mkdir()
+    policy_path.write_text(json.dumps({"version": 1, "skills": {
+        "ECC/sample-skill/SKILL.md": {
+            "enabled": True, "content_sha256": hashlib.sha256(content.encode()).hexdigest()
+        }
+    }}), encoding="utf-8")
+    with _client_for_test(tmp_path) as client:
+        response = client.post(f"/api/v1/skills/{skill_id}/disable")
+        assert response.status_code == 200
+        assert response.json()["status"] == "disabled_pending_review"
+        assert client.get("/api/v1/skills").json()["skills"][0]["status"] == "disabled_pending_review"

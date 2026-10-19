@@ -54,6 +54,11 @@ class BotResponse(BaseModel):
     updated_at: datetime
 
 
+class SkillReviewRequest(BaseModel):
+    content_sha256: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")
+    confirmation: str = Field(min_length=1, max_length=100)
+
+
 class TaskResponse(BaseModel):
     id: str
     session_id: str

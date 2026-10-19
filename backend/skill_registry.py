@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -189,6 +192,116 @@ def list_skill_metadata() -> dict[str, Any]:
         "truncated": len(skills) >= MAX_SKILL_FILES,
         "note": "Metadata only. Skills must be explicitly reviewed and hash-matched in the local policy before they can be selected for model planning.",
     }
+
+
+class SkillReviewError(ValueError):
+    """A human-review action failed its explicit confirmation or hash check."""
+
+
+def get_skill_detail(skill_id: str) -> dict[str, Any] | None:
+    """Read one skill document for explicit human inspection; never execute it."""
+    settings = get_settings()
+    root = Path(settings.skills_root).expanduser()
+    policy = _load_policy(Path(settings.skills_policy_path).expanduser())
+    approvals = policy.get("skills", {})
+    for item in _iter_skill_files(root):
+        if item["id"] != skill_id:
+            continue
+        entry = approvals.get(item["path"], {})
+        status = (
+            "enabled_reviewed"
+            if isinstance(entry, dict) and entry.get("enabled") is True
+            and entry.get("content_sha256") == item["content_hash"]
+            else "changed_since_review"
+            if isinstance(entry, dict) and entry.get("enabled") is True
+            else "disabled_pending_review"
+        )
+        return {
+            "id": item["id"],
+            "name": item["name"],
+            "description": item["description"],
+            "source": item["source"],
+            "path": item["path"],
+            "content_sha256": item["content_hash"],
+            "status": status,
+            "content": item["_text"],
+            "note": "This is untrusted text for human review. TEDDY will not execute it.",
+        }
+    return None
+
+
+def _write_policy(policy_path: Path, policy: dict[str, Any]) -> None:
+    if policy_path.is_symlink():
+        raise SkillReviewError("The skill policy file is a symlink; refusing to modify it.")
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temp_name = tempfile.mkstemp(prefix=".skills-policy-", suffix=".tmp", dir=str(policy_path.parent))
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(policy, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp_name, policy_path)
+    finally:
+        try:
+            Path(temp_name).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def enable_skill_after_review(
+    skill_id: str,
+    expected_sha256: str,
+    confirmation: str,
+) -> dict[str, Any]:
+    """Enable only the current content after a phrase and full-hash confirmation."""
+    expected_confirmation = f"ENABLE {skill_id}"
+    if confirmation != expected_confirmation:
+        raise SkillReviewError(f"Type exactly: {expected_confirmation}")
+    settings = get_settings()
+    root = Path(settings.skills_root).expanduser()
+    matched = next((item for item in _iter_skill_files(root) if item["id"] == skill_id), None)
+    if matched is None:
+        raise SkillReviewError("Skill not found. Refresh the library and try again.")
+    if matched["content_hash"] != expected_sha256:
+        raise SkillReviewError("This skill changed after it was opened. Reopen and review the current content.")
+    policy_path = Path(settings.skills_policy_path).expanduser()
+    policy = _load_policy(policy_path)
+    approvals = policy.get("skills", {})
+    if not isinstance(approvals, dict):
+        approvals = {}
+    approvals[matched["path"]] = {
+        "enabled": True,
+        "content_sha256": matched["content_hash"],
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    policy["version"] = 1
+    policy["skills"] = approvals
+    _write_policy(policy_path, policy)
+    return {"id": skill_id, "path": matched["path"], "status": "enabled_reviewed", "content_sha256": matched["content_hash"]}
+
+
+def disable_skill(skill_id: str) -> dict[str, Any]:
+    """Disable a skill without altering its document."""
+    settings = get_settings()
+    root = Path(settings.skills_root).expanduser()
+    matched = next((item for item in _iter_skill_files(root) if item["id"] == skill_id), None)
+    if matched is None:
+        raise SkillReviewError("Skill not found. Refresh the library and try again.")
+    policy_path = Path(settings.skills_policy_path).expanduser()
+    policy = _load_policy(policy_path)
+    approvals = policy.get("skills", {})
+    if not isinstance(approvals, dict):
+        approvals = {}
+    approvals[matched["path"]] = {
+        "enabled": False,
+        "content_sha256": matched["content_hash"],
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    policy["version"] = 1
+    policy["skills"] = approvals
+    _write_policy(policy_path, policy)
+    return {"id": skill_id, "path": matched["path"], "status": "disabled_pending_review"}
 
 
 def _tokens(text: str) -> set[str]:
