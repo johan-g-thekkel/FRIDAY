@@ -54,7 +54,7 @@ def _frontmatter(text: str) -> tuple[str | None, str | None]:
         key, raw_value = match.group(1), match.group(2).strip()
         if key == "name":
             name = _clean_scalar(raw_value)[:MAX_NAME_CHARS]
-        elif raw_value in {"|", ">", "|-", ">-", "|+", ">+"}:
+        elif not raw_value or raw_value in {"|", ">", "|-", ">-", "|+", ">+"}:
             in_multiline_description = True
             description_parts = []
         else:
