@@ -6,7 +6,7 @@
 
 The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/static`). In Codespaces, open the forwarded port 8000 to use the command centre; no separate npm/Vite server is required. It loads `/health`, `/api/v1/status`, `/api/v1/models`, `/api/v1/integrations`, `/api/v1/skills`, `/api/v1/tasks`, and `/api/v1/bots`, then polls for updates every eight seconds while the tab is visible. Task submission creates a persisted plan and task history entry. The Bot Studio creates, edits, enables/disables, and deletes local Bot profiles with role instructions, notes, model-route defaults, runtime choice, and reviewed skills; a selected Bot's data is attached as untrusted context to task planning and optional coding runs. The Skills Library accepts supported ZIP uploads and imports canonical `SKILL.md` metadata only; uploaded code, scripts, and binaries are never executed.
 
-**Execution boundary:** planning is always available. Eligible coding tasks can additionally be submitted to the Codex CLI worker when the `codex` executable is installed and authenticated. Each run uses a detached Git worktree and Codex `workspace-write` sandbox, has a bounded timeout, records event metadata, and retains the worktree for human review. TEDDY does not auto-merge, push, deploy, or run non-coding tasks through this worker. Hermes and Claude Code remain inventory-only until separate, tested adapters are provided. Skills remain read-only in the UI and must be hash-approved with the guarded CLI.
+**Execution boundary:** planning is always available. Eligible coding tasks can additionally be submitted to the Codex CLI worker when the `codex` executable is installed and authenticated. Each run uses a detached Git worktree and Codex `workspace-write` sandbox, has a bounded timeout, records event metadata, and retains the worktree for human review. TEDDY does not auto-merge, push, deploy, or run non-coding tasks through this worker. Hermes and Claude Code remain inventory-only until separate, tested adapters are provided. Skills can be reviewed and explicitly approved in the Skills Library UI or through the guarded CLI. The UI displays the actual untrusted document, requires an acknowledgement plus an exact `ENABLE SKILL_ID` phrase, and pins its full SHA-256; if the file changes, it becomes unapproved again.
 
 ## Backend status
 
@@ -86,7 +86,7 @@ List metadata for local imported skills (does not activate or execute them):
 curl http://127.0.0.1:8000/api/v1/skills
 ```
 
-Set `SKILLS_ROOT=./skills/imported` in `.env` or leave the default. Copy reviewed skill folders into that local directory; it is ignored by Git so your imported skill content is not published automatically. The endpoint reads only small `SKILL.md` metadata and marks every discovered skill `disabled_pending_review`.
+Set `SKILLS_ROOT=./skills/imported` in `.env` or leave the default. Copy reviewed skill folders into that local directory; it is ignored by Git so your imported skill content is not published automatically. The inventory endpoint reads only `SKILL.md` metadata. Newly imported files start `disabled_pending_review`; approved entries show `enabled_reviewed` only while their SHA-256 still matches the reviewed version.
 
 The integration registry does not execute agents or expose credentials. A command being installed is not enough to mark it fully operational.
 
@@ -103,7 +103,7 @@ curl http://127.0.0.1:8000/api/v1/skills
 
 Only metadata is imported. Model weights, environments, executable scripts, and the quarantined CL4R1T4S prompt archive are not activated. All new skills remain disabled until explicit, hash-pinned review.
 
-Review and enable a skill from the terminal:
+Alternatively, review and enable a skill from the terminal:
 
 ```bash
 python scripts/skill_admin.py list
@@ -111,7 +111,7 @@ python scripts/skill_admin.py show SKILL_ID
 python scripts/skill_admin.py enable SKILL_ID
 ```
 
-The enable command prints the skill content and requires you to type `ENABLE SKILL_ID` after review. It writes a local, gitignored hash-pinned policy; if the skill file changes, it is disabled automatically until reviewed again. You can use `python scripts/skill_admin.py disable SKILL_ID` at any time.
+The enable command prints the skill content and requires you to type `ENABLE SKILL_ID` after review. In the web UI, the same approval phrase is required after reading the displayed skill text. It writes a local, gitignored hash-pinned policy; if the skill file changes, it is disabled automatically until reviewed again. You can use `python scripts/skill_admin.py disable SKILL_ID` at any time.
 
 When a provider is configured, TEDDY selects at most two hash-approved skills based on prompt/description keyword overlap, capped at 6,000 total skill-content characters by default. The model receives them as untrusted supplemental guidance, not system policy. POST `/api/v1/tasks` also accepts `skill_ids` for explicit selections; requests for unapproved skills are rejected. The task response records `skills_used`. With only the local fallback active, skills are not represented as used because no model receives their instructions.
 
