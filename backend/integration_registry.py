@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.settings import get_settings
+from backend.model_profiles import load_model_profiles
 
 
 def _cli_status(command: str) -> str:
@@ -32,7 +33,7 @@ def list_integrations() -> list[dict[str, Any]]:
         "configured_not_tested" if settings.nebius_ready else "needs_setup"
     )
 
-    return [
+    integrations = [
         {
             "id": "local_fallback",
             "name": "TEDDY Local Planner",
@@ -221,3 +222,20 @@ def list_integrations() -> list[dict[str, Any]]:
             "details": "ECC has 292 core skill definitions plus 9 Astra, 10 GLM-V and 5 REA skill candidates. Place reviewed folders under SKILLS_ROOT for metadata discovery; skills stay disabled and their scripts are never run by the inventory API.",
         },
     ]
+    integrations.extend(
+        {
+            "id": "model-profile-" + profile["id"],
+            "name": profile["name"],
+            "kind": "model_provider",
+            "status": profile["status"],
+            "purpose": "Configured named OpenAI-compatible model route",
+            "details": (
+                "Model ID: " + profile["model"] + "; "
+                "capabilities: " + ", ".join(profile["capabilities"])
+                if profile["available"]
+                else "Needs environment variable " + profile["api_key_env"] + "."
+            ),
+        }
+        for profile in load_model_profiles()
+    )
+    return integrations
