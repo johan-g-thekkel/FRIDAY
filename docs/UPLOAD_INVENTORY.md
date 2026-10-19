@@ -136,6 +136,19 @@ The current archives include **316 named candidate skills before broader cross-s
 
 These are candidate instructions, not enabled skills. The catalog must also record required environment variables, executables, API/provider dependencies, compatible agent runtimes, file paths, license/source, and risk tags. Skills that ask to bypass policy, exfiltrate secrets, or perform unapproved side effects must be quarantined or rewritten before enablement.
 
+## Local skill activation workflow
+
+After importing the curated bundle into the Codespace, use:
+
+```bash
+python scripts/skill_admin.py list
+python scripts/skill_admin.py show SKILL_ID
+python scripts/skill_admin.py enable SKILL_ID
+python scripts/skill_admin.py disable SKILL_ID
+```
+
+TEDDY sends only reviewed, hash-matched skills to configured model-planning routes, limits the number/size of skill contexts, and returns the skill names in task history. It refuses explicit unapproved selections. A skills bundle does not install its external tools, authenticate an agent, or supply missing model weights.
+
 ## Current project rule
 
 The `GET /api/v1/integrations` endpoint reports readiness metadata. A listed integration is not operational just because a name appears: verify its executable/package, credentials, model ID, health, error paths, and policy boundaries. Never execute a file simply because it is inside an uploaded archive.
