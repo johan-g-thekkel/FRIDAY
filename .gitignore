@@ -13,3 +13,6 @@ node_modules/
 dist/
 build/
 .DS_Store
+
+# User-imported skills are kept local; the API indexes metadata only.
+skills/imported/
