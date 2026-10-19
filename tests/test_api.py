@@ -12,6 +12,8 @@ def _client_for_test(tmp_path: Path):
     os.environ["SKILLS_POLICY_PATH"] = str(tmp_path / "data" / "skills-policy.json")
     os.environ.pop("NEBIUS_API_KEY", None)
     os.environ.pop("NEBIUS_MODEL", None)
+    os.environ.pop("NVIDIA_API_KEY", None)
+    os.environ.pop("NVIDIA_MODEL", None)
     os.environ.pop("ANTHROPIC_API_KEY", None)
     os.environ["CLAUDE_FABLE_ENABLED"] = "false"
     get_settings.cache_clear()
