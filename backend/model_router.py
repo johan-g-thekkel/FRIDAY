@@ -238,9 +238,9 @@ async def create_plan(
     requested_route: str = "auto",
 ) -> dict[str, Any]:
     settings = get_settings()
-    if requested_route not in {"auto", "nebius", "nvidia_nim", "claude_fable"}:
+    if requested_route not in {"auto", "nebius", "nvidia_nim", "openai_compatible", "claude_fable"}:
         raise ModelRouteUnavailable(
-            "Unknown model route. Choose auto, nebius, nvidia_nim, or claude_fable."
+            "Unknown model route. Choose auto, nebius, nvidia_nim, openai_compatible, or claude_fable."
         )
     if requested_route == "nebius" and not settings.nebius_ready:
         raise ModelRouteUnavailable(
@@ -250,12 +250,17 @@ async def create_plan(
         raise ModelRouteUnavailable(
             "NVIDIA NIM route is not configured. Set NVIDIA_API_KEY and NVIDIA_MODEL."
         )
+    if requested_route == "openai_compatible" and not settings.openai_compatible_ready:
+        raise ModelRouteUnavailable(
+            "Custom OpenAI-compatible route is not configured. Set OPENAI_COMPATIBLE_API_KEY, OPENAI_COMPATIBLE_BASE_URL, and OPENAI_COMPATIBLE_MODEL."
+        )
     if requested_route == "claude_fable" and not settings.claude_fable_ready:
         raise ModelRouteUnavailable(
             "Claude Fable is disabled or not configured. Set ANTHROPIC_API_KEY and explicitly enable CLAUDE_FABLE_ENABLED."
         )
     provider_available = (
-        settings.nebius_ready or settings.nvidia_ready or settings.claude_fable_ready
+        settings.nebius_ready or settings.nvidia_ready
+        or settings.openai_compatible_ready or settings.claude_fable_ready
     )
     selected_skills: list[dict[str, str]] = []
     if provider_available:
@@ -280,7 +285,7 @@ async def create_plan(
                 "Claude Fable request exceeds the configured prompt or estimated-cost guard."
             )
         use_fable = True
-    elif requested_route in {"nebius", "nvidia_nim"}:
+    elif requested_route in {"nebius", "nvidia_nim", "openai_compatible"}:
         use_fable = False
     else:
         use_fable = _requires_claude_fable(prompt, settings, skill_context_chars)
@@ -290,6 +295,7 @@ async def create_plan(
         and selected_skills
         and not settings.nebius_ready
         and not settings.nvidia_ready
+        and not settings.openai_compatible_ready
         and not use_fable
     ):
         raise ModelProviderUnavailableForSkills(
@@ -387,6 +393,38 @@ async def create_plan(
                 data,
                 provider="nvidia-nim",
                 model=settings.nvidia_model,
+                skills_used=skill_names,
+            )
+        finally:
+            await client.close()
+
+    if settings.openai_compatible_ready and requested_route in {"auto", "openai_compatible"}:
+        client = AsyncOpenAI(
+            base_url=settings.openai_compatible_base_url.rstrip("/"),
+            api_key=settings.openai_compatible_api_key,
+            timeout=45.0,
+            max_retries=1,
+        )
+        try:
+            response = await client.chat.completions.create(
+                model=settings.openai_compatible_model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                temperature=0.2,
+                max_tokens=900,
+            )
+            raw = response.choices[0].message.content or ""
+            match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+            if not match:
+                raise ValueError("The configured OpenAI-compatible model returned no JSON task plan.")
+            data = json.loads(match.group(0))
+            return _validate_plan(
+                prompt,
+                data,
+                provider="openai-compatible",
+                model=settings.openai_compatible_model,
                 skills_used=skill_names,
             )
         finally:
