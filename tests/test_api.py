@@ -8,6 +8,7 @@ from backend.settings import get_settings
 
 def _client_for_test(tmp_path: Path):
     os.environ["SQLITE_PATH"] = str(tmp_path / "teddy-test.db")
+    os.environ["SKILLS_ROOT"] = str(tmp_path / "skills")
     os.environ.pop("NEBIUS_API_KEY", None)
     os.environ.pop("NEBIUS_MODEL", None)
     os.environ.pop("ANTHROPIC_API_KEY", None)
@@ -116,3 +117,29 @@ def test_claude_fable_route_is_opt_in_and_selective():
         "Design the system architecture for a multi-agent coding workflow.",
         over_budget,
     )
+
+
+def test_skill_inventory_reads_metadata_and_keeps_skills_disabled(tmp_path):
+    skill_dir = tmp_path / "skills" / "sample-source" / "verification-loop"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "---\n"
+        "name: verification-loop\n"
+        "description: Verify task output with tests before reporting success.\n"
+        "---\n"
+        "# Verification Loop\n"
+        "This body is never executed by the inventory endpoint.\n",
+        encoding="utf-8",
+    )
+
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api/v1/skills")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["count"] == 1
+        skill = body["skills"][0]
+        assert skill["name"] == "verification-loop"
+        assert skill["source"] == "sample-source"
+        assert skill["status"] == "disabled_pending_review"
+        assert skill["description"].startswith("Verify task output")
+        assert body["note"].startswith("Metadata only")
