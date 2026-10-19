@@ -78,14 +78,14 @@ The integration registry does not execute agents or expose credentials. A comman
 
 ### Import skill metadata from your ZIPs
 
-Copy the uploaded ZIP files into your Codespace (for example, into `/workspaces/TEDDY/incoming/`), then run:
+Download the [curated TEDDY skill candidates bundle](https://github.com/johan-g-thekkel/TEDDY) from this conversation, then upload it to your Codespace under `/workspaces/TEDDY/incoming/`. Run:
 
 ```bash
-python scripts/import_skill_metadata.py incoming/ECC-main.zip incoming/Desktop2222.zip
+python scripts/import_skill_metadata.py incoming/teddy-skill-candidates.zip
 curl http://127.0.0.1:8000/api/v1/skills
 ```
 
-The importer copies only canonical `SKILL.md` files from ECC, Astra, GLM-V, and REA into the local ignored directory `skills/imported/`. It skips client-specific/localized duplicates and limits archive/file sizes. It does not install dependencies, run scripts, enable skills, or import source-code projects. All discovered skills remain `disabled_pending_review`. To use a skill later, review its full source, required tools, license, and any referenced resources first.
+The bundle contains 316 canonical `SKILL.md` files from ECC, Astra, GLM-V, and REA plus source-license files and a provenance manifest. It intentionally excludes executable scripts, model weights, environment files, and CL4R1T4S prompt dumps. The importer copies only canonical `SKILL.md` files into the local ignored directory `skills/imported/`; it does not install dependencies, execute scripts, or enable skills. All discovered skills remain `disabled_pending_review`. Review a skill's full source, required tools, license, and referenced resources before enabling it. The original `ECC-main.zip` and `Desktop2222.zip` archives can also be scanned directly if copied into the Codespace.
 
 Get a task by its ID:
 
