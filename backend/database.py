@@ -36,10 +36,18 @@ def init_db() -> None:
                 risk TEXT NOT NULL,
                 approval_required INTEGER NOT NULL,
                 plan_json TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                skills_used_json TEXT NOT NULL DEFAULT '[]'
             )
             """
         )
+        columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(tasks)").fetchall()
+        }
+        if "skills_used_json" not in columns:
+            connection.execute(
+                "ALTER TABLE tasks ADD COLUMN skills_used_json TEXT NOT NULL DEFAULT '[]'"
+            )
 
 
 def insert_task(task: dict[str, Any]) -> None:
@@ -48,8 +56,8 @@ def insert_task(task: dict[str, Any]) -> None:
             """
             INSERT INTO tasks (
                 id, session_id, prompt, status, category, provider, model,
-                risk, approval_required, plan_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                risk, approval_required, plan_json, created_at, skills_used_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task["id"],
@@ -63,6 +71,7 @@ def insert_task(task: dict[str, Any]) -> None:
                 int(task["approval_required"]),
                 json.dumps(task["plan"]),
                 task["created_at"],
+                json.dumps(task.get("skills_used", [])),
             ),
         )
 
@@ -71,6 +80,8 @@ def _row_to_task(row: sqlite3.Row) -> dict[str, Any]:
     task = dict(row)
     task["approval_required"] = bool(task["approval_required"])
     task["plan"] = json.loads(task.pop("plan_json"))
+    skills_used_json = task.pop("skills_used_json", "[]")
+    task["skills_used"] = json.loads(skills_used_json or "[]")
     return task
 
 
