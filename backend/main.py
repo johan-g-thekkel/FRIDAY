@@ -104,7 +104,7 @@ async def model_routes():
                 "name": "Automatic",
                 "available": True,
                 "model": None,
-                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius or NVIDIA NIM model, or the deterministic local fallback.",
+                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius, NVIDIA NIM, or generic OpenAI-compatible model, or the deterministic local fallback.",
             },
             {
                 "id": "nebius",
