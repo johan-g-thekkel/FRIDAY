@@ -6,7 +6,7 @@ from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 
 from backend.settings import get_settings
-from backend.skill_registry import get_enabled_skill_context, SkillNotApprovedError
+from backend.skill_registry import get_enabled_skill_context
 
 
 class ModelProviderUnavailableForSkills(ValueError):
@@ -239,7 +239,12 @@ async def create_plan(
 
     # Premium Claude Fable is intentionally opt-in and only used for prompts
     # that match a narrow high-complexity/long-horizon signal set.
-    if _requires_claude_fable(prompt, settings, skill_context_chars):
+    use_fable = _requires_claude_fable(prompt, settings, skill_context_chars)
+    if requested_skill_ids and selected_skills and not settings.nebius_ready and not use_fable:
+        raise ModelProviderUnavailableForSkills(
+            "The selected skill needs a configured inference route. Claude Fable is only selected for complex tasks; configure Nebius or submit a complex reasoning task."
+        )
+    if use_fable:
         client = AsyncAnthropic(
             api_key=settings.anthropic_api_key,
             timeout=45.0,
