@@ -60,6 +60,14 @@ List recent tasks:
 curl http://127.0.0.1:8000/api/v1/tasks
 ```
 
+List available model routes:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/models
+```
+
+POST `/api/v1/tasks` accepts `model_route` values `auto`, `nebius`, or `claude_fable`. The `nebius` route uses the exact model ID configured in `NEBIUS_MODEL`; set it to a supported Nemotron ID in your Token Factory account to route tasks to Nemotron. Unconfigured explicit routes return HTTP 409 rather than silently falling back.
+
 List actual integration readiness:
 
 ```bash
