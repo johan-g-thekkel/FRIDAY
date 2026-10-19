@@ -67,6 +67,10 @@ def import_archive(path: Path, seen: set[tuple[str, str]]) -> tuple[int, int]:
 
     imported = skipped = total_size = 0
     with zipfile.ZipFile(path) as archive:
+        total_uncompressed = sum(item.file_size for item in archive.infolist())
+        if total_uncompressed > MAX_TOTAL_ARCHIVE_BYTES:
+            raise ValueError(f"{path.name} exceeds the total uncompressed archive size budget")
+
         for info in archive.infolist():
             if info.is_dir():
                 continue
@@ -82,9 +86,6 @@ def import_archive(path: Path, seen: set[tuple[str, str]]) -> tuple[int, int]:
                 print(f"SKIP {info.filename}: symlink or SKILL.md too large")
                 skipped += 1
                 continue
-            total_size += info.file_size
-            if total_size > MAX_TOTAL_ARCHIVE_BYTES:
-                raise ValueError(f"{path.name} exceeds the total archive size budget")
             if imported >= MAX_SKILLS:
                 raise ValueError(f"too many skill files in {path.name}; limit is {MAX_SKILLS}")
 
