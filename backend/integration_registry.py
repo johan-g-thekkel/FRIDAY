@@ -198,6 +198,7 @@ def list_integrations() -> list[dict[str, Any]]:
             "status": (
                 "metadata_only_inventory_available"
                 if Path(settings.skills_root).is_dir()
+                and next(Path(settings.skills_root).rglob("SKILL.md"), None) is not None
                 else "archives_reviewed_not_imported"
             ),
             "purpose": "Discover and index skill packages for compatible agents",
