@@ -132,6 +132,34 @@ NVIDIA_MODEL=your_exact_nvidia_model_id
 
 Then restart the backend and check `GET /api/v1/models`. Select `model_route: "nvidia_nim"` for a task to use that endpoint. NVIDIA's NIM API uses the OpenAI-compatible `/v1/chat/completions` interface; supported model IDs and access vary by model/account ([official API reference](https://docs.api.nvidia.com/nim/reference/llm-apis)).
 
+### Add more hosted model profiles without changing TEDDY's router
+
+For any additional provider that exposes an **OpenAI-compatible chat-completions API**, configure a named profile rather than adding Python code for every model:
+
+```bash
+mkdir -p data
+cp config/model-profiles.example.json data/model-profiles.json
+```
+
+Edit `data/model-profiles.json` and replace each placeholder `base_url` and `model` with the exact endpoint and model ID documented by your provider. Give each profile a unique lowercase `id`; put the **name of an environment variable** in `api_key_env`, not the API key itself; add that secret to your local `.env` or Codespaces secrets; and only set `enabled` to `true` after validating the endpoint. Example profile:
+
+```json
+{
+  "id": "nex_n2_5",
+  "name": "Nex-N2.5",
+  "base_url": "https://YOUR_VERIFIED_ENDPOINT/v1",
+  "model": "YOUR_EXACT_MODEL_ID",
+  "api_key_env": "NEX_N2_5_API_KEY",
+  "priority": 50,
+  "capabilities": ["text", "reasoning", "coding"],
+  "enabled": true
+}
+```
+
+Then add `NEX_N2_5_API_KEY=...` to the local `.env`, restart TEDDY, and check `GET /api/v1/models`. If the profile is configured and its key exists, its `id` becomes a valid `model_route`. With `auto`, TEDDY selects a ready profile after Nebius/NVIDIA routes and before the single custom OpenAI-compatible route. Profiles are only marked `configured_not_tested`; they are not declared healthy until a real call succeeds.
+
+**Important:** this adapter handles text-based chat completions only. A profile's `vision` or `audio` capability is descriptive metadata, not proof that multimodal inputs are implemented. Nex-N2.5 or GLM-V must expose a compatible endpoint for this adapter to call them; raw model source/weights or an agentic API require a separate adapter. The profile file is under `data/`, which is gitignored, and API secrets must never be committed.
+
 The configured default base URL is `https://api.tokenfactory.nebius.com/v1`.
 
 The backend calls the configured model for task planning only. Model output is validated before it is stored. External actions and tool execution remain disabled.
