@@ -61,20 +61,30 @@ async def health():
 
 @app.get("/api/v1/status", response_model=BackendStatus, tags=["system"])
 async def backend_status():
-    ready = settings.nebius_ready
+    current = get_settings()
+    if current.nebius_ready:
+        provider = "nebius-token-factory"
+        configured_model = current.nebius_model
+        note = "Nebius model configured. This backend still plans tasks only; external actions are not enabled."
+    elif current.nvidia_ready:
+        provider = "nvidia-nim"
+        configured_model = current.nvidia_model
+        note = "NVIDIA NIM model configured. This backend still plans tasks only; external actions are not enabled."
+    elif current.claude_fable_ready:
+        provider = "anthropic-claude-fable"
+        configured_model = current.claude_fable_model
+        note = "Claude Fable is configured for complex reasoning tasks only. This backend still plans tasks only; external actions are not enabled."
+    else:
+        provider = "local-fallback"
+        configured_model = None
+        note = "No external model provider is configured. Deterministic fallback planning is active; no external model is being called."
     return BackendStatus(
         name="TEDDY",
-        status="ready" if ready else "development-mode",
-        model_provider="nebius-token-factory" if ready else "local-fallback",
-        configured_model=settings.nebius_model if ready else None,
+        status="ready" if provider != "local-fallback" else "development-mode",
+        model_provider=provider,
+        configured_model=configured_model,
         execution_enabled=False,
-        note=(
-            "Nebius model configured. This backend still plans tasks only; "
-            "external actions are not enabled."
-            if ready
-            else "No Nebius API key/model configured. Deterministic fallback "
-            "planning is active; no external model is being called."
-        ),
+        note=note,
     )
 
 
