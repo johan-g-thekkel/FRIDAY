@@ -63,6 +63,7 @@ def test_integrations_endpoint_reports_status(tmp_path):
         by_id = {item["id"]: item for item in items}
         assert {
             "local_fallback",
+            "nvidia_nim",
             "claude_fable_5_1",
             "nex_n2_5",
             "needle_3",
@@ -243,6 +244,7 @@ def test_model_routes_report_only_configured_providers(tmp_path):
         routes = {item["id"]: item for item in body["routes"]}
         assert routes["auto"]["available"] is True
         assert routes["nebius"]["available"] is False
+        assert routes["nvidia_nim"]["available"] is False
         assert routes["claude_fable"]["available"] is False
 
 
@@ -257,3 +259,16 @@ def test_unconfigured_explicit_model_route_returns_conflict(tmp_path):
         )
         assert response.status_code == 409
         assert "not configured" in response.json()["detail"].lower()
+
+
+def test_unconfigured_nvidia_route_returns_conflict(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.post(
+            "/api/v1/tasks",
+            json={
+                "prompt": "Summarize this task",
+                "model_route": "nvidia_nim",
+            },
+        )
+        assert response.status_code == 409
+        assert "nvidia" in response.json()["detail"].lower()
