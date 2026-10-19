@@ -452,7 +452,9 @@ def test_requested_skill_ids_are_persisted_with_task(tmp_path, monkeypatch):
 def test_bot_crud_and_task_attachment(tmp_path, monkeypatch):
     import backend.main as main_module
 
+    contexts = []
     async def fake_plan(prompt, requested_skill_ids=None, requested_route="auto", additional_context=None):
+        contexts.append(additional_context)
         return {
             "category": "coding", "provider": "local-fallback", "model": None,
             "risk": "medium", "approval_required": False,
@@ -484,6 +486,7 @@ def test_bot_crud_and_task_attachment(tmp_path, monkeypatch):
         assert task.json()["bot_id"] == bot["id"]
         assert task.json()["bot_name"] == "Python Helper"
         assert client.get(f"/api/v1/tasks/{task.json()['id']}").json()["bot_runtime"] == "plan_only"
+        assert contexts and '"name": "Python Helper"' in contexts[-1]
 
         changed = client.patch(f"/api/v1/bots/{bot['id']}", json={"runtime": "codex_cli", "enabled": False})
         assert changed.status_code == 200

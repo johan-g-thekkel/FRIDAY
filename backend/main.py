@@ -262,6 +262,8 @@ async def create_task(request: TaskCreate):
             requested_route=route,
             additional_context=bot_context,
         )
+    except HTTPException:
+        raise
     except SkillNotApprovedError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ModelRouteUnavailable as exc:
