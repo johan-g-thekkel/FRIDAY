@@ -84,15 +84,15 @@ async def backend_status():
     if current.nebius_ready:
         provider = "nebius-token-factory"
         configured_model = current.nebius_model
-        note = "Nebius model configured. This backend still plans tasks only; external actions are not enabled."
+        note = "Nebius model configured for task planning. Eligible coding tasks can be sent to the sandboxed Codex CLI worker when installed; broader external actions remain disabled."
     elif current.nvidia_ready:
         provider = "nvidia-nim"
         configured_model = current.nvidia_model
-        note = "NVIDIA NIM model configured. This backend still plans tasks only; external actions are not enabled."
+        note = "NVIDIA NIM model configured for task planning. Eligible coding tasks can be sent to the sandboxed Codex CLI worker when installed; broader external actions remain disabled."
     elif current.openai_compatible_ready:
         provider = "openai-compatible"
         configured_model = current.openai_compatible_model
-        note = "Custom OpenAI-compatible model configured. This backend still plans tasks only; external actions are not enabled."
+        note = "Custom OpenAI-compatible model configured for task planning. Eligible coding tasks can be sent to the sandboxed Codex CLI worker when installed; broader external actions remain disabled."
     elif current.claude_fable_ready:
         provider = "anthropic-claude-fable"
         configured_model = current.claude_fable_model
@@ -100,7 +100,7 @@ async def backend_status():
     else:
         provider = "local-fallback"
         configured_model = None
-        note = "No external model provider is configured. Deterministic fallback planning is active; no external model is being called."
+        note = "No external model provider is configured. Deterministic fallback planning is active; Bot instructions and skills are not interpreted by an external model until a route is configured."
     return BackendStatus(
         name="TEDDY",
         status="ready" if provider != "local-fallback" else "development-mode",

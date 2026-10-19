@@ -493,6 +493,13 @@ def test_bot_crud_and_task_attachment(tmp_path, monkeypatch):
         assert changed.json()["runtime"] == "codex_cli"
         assert changed.json()["enabled"] is False
 
+        disabled_task = client.post(
+            "/api/v1/tasks",
+            json={"prompt": "Build a Python calculator", "bot_id": bot["id"]},
+        )
+        assert disabled_task.status_code == 409
+        assert "disabled" in disabled_task.json()["detail"].lower()
+
         deleted = client.delete(f"/api/v1/bots/{bot['id']}")
         assert deleted.status_code == 200
         assert client.get("/api/v1/bots").json() == []
