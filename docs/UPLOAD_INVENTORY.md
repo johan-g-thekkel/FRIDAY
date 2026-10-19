@@ -119,6 +119,12 @@ Claude Fable 5.1 is an optional **hosted model route**, not a source-code packag
 
 Official model/API documentation: https://platform.claude.com/docs/en/models/fable-5-1/overview
 
+### NVIDIA NIM / Nemotron
+
+TEDDY now has a separate OpenAI-compatible NVIDIA NIM route, defaulting to `https://integrate.api.nvidia.com/v1`. Configure `NVIDIA_API_KEY` and an exact, account-supported `NVIDIA_MODEL` ID; then check `GET /api/v1/models`. The route can be labelled Nemotron when the configured model ID includes that family name. This path is separate from the Nebius Token Factory provider. Configuration alone does not prove a live request succeeds.
+
+Official API reference: https://docs.api.nvidia.com/nim/reference/llm-apis
+
 ### Nex-N2.5
 
 No Nex-N2.5 source or model weights were found in the uploaded bundle. This remains an adapter candidate; select and verify an exact model variant/ID, endpoint or local runtime, licensing terms, availability and pricing before use.
