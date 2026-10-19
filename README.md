@@ -76,6 +76,17 @@ Set `SKILLS_ROOT=./skills/imported` in `.env` or leave the default. Copy reviewe
 
 The integration registry does not execute agents or expose credentials. A command being installed is not enough to mark it fully operational.
 
+### Import skill metadata from your ZIPs
+
+Copy the uploaded ZIP files into your Codespace (for example, into `/workspaces/TEDDY/incoming/`), then run:
+
+```bash
+python scripts/import_skill_metadata.py incoming/ECC-main.zip incoming/Desktop2222.zip
+curl http://127.0.0.1:8000/api/v1/skills
+```
+
+The importer copies only canonical `SKILL.md` files from ECC, Astra, GLM-V, and REA into the local ignored directory `skills/imported/`. It skips client-specific/localized duplicates and limits archive/file sizes. It does not install dependencies, run scripts, enable skills, or import source-code projects. All discovered skills remain `disabled_pending_review`. To use a skill later, review its full source, required tools, license, and any referenced resources first.
+
 Get a task by its ID:
 
 ```bash
