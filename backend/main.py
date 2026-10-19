@@ -70,6 +70,10 @@ async def backend_status():
         provider = "nvidia-nim"
         configured_model = current.nvidia_model
         note = "NVIDIA NIM model configured. This backend still plans tasks only; external actions are not enabled."
+    elif current.openai_compatible_ready:
+        provider = "openai-compatible"
+        configured_model = current.openai_compatible_model
+        note = "Custom OpenAI-compatible model configured. This backend still plans tasks only; external actions are not enabled."
     elif current.claude_fable_ready:
         provider = "anthropic-claude-fable"
         configured_model = current.claude_fable_model
@@ -123,6 +127,13 @@ async def model_routes():
                 "available": current.nvidia_ready,
                 "model": current.nvidia_model if current.nvidia_ready else None,
                 "details": "Uses the exact NVIDIA_MODEL value at NVIDIA_BASE_URL. Configure a supported model ID and NVIDIA API key before selecting this route.",
+            },
+            {
+                "id": "openai_compatible",
+                "name": current.openai_compatible_name,
+                "available": current.openai_compatible_ready,
+                "model": current.openai_compatible_model if current.openai_compatible_ready else None,
+                "details": "Optional custom endpoint. Configure its base URL, key, and exact model ID; the endpoint must support OpenAI-compatible chat completions.",
             },
             {
                 "id": "claude_fable",
