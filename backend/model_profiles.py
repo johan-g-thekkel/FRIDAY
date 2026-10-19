@@ -68,8 +68,9 @@ def load_model_profiles() -> list[dict[str, Any]]:
     profiles: list[dict[str, Any]] = []
     seen: set[str] = set()
     for item in raw:
-        if not isinstance(item, dict) or item.get("enabled", True) is not True:
+        if not isinstance(item, dict):
             continue
+        enabled = item.get("enabled", True) is True
         profile_id = item.get("id")
         name = item.get("name")
         model = item.get("model")
@@ -114,8 +115,15 @@ def load_model_profiles() -> list[dict[str, Any]]:
             "_api_key": api_key,
             "priority": priority,
             "capabilities": capabilities or ["text"],
-            "available": bool(api_key),
-            "status": "configured_not_tested" if api_key else "needs_api_key",
+            "enabled": enabled,
+            "available": bool(api_key) and enabled,
+            "status": (
+                "configured_not_tested"
+                if api_key and enabled
+                else "disabled_in_config"
+                if not enabled
+                else "needs_api_key"
+            ),
         })
         seen.add(profile_id)
 
@@ -137,6 +145,8 @@ def public_model_profiles() -> list[dict[str, Any]]:
                 "OpenAI-compatible route. Configured but not live-tested; "
                 "explicit selections use this exact endpoint/model ID."
                 if profile["available"]
+                else "This profile is disabled in model-profiles.json."
+                if profile["status"] == "disabled_in_config"
                 else f"Set the environment variable {profile['api_key_env']} to enable this profile."
             ),
         }
