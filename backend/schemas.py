@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 TaskStatus = Literal["planned", "failed"]
 TaskCategory = Literal["coding", "research", "iot", "personal", "creative", "general"]
 TaskRisk = Literal["low", "medium", "high", "critical"]
-ModelRoute = Literal["auto", "nebius", "nvidia_nim", "openai_compatible", "claude_fable"]
 
 
 class TaskCreate(BaseModel):
@@ -15,7 +14,7 @@ class TaskCreate(BaseModel):
     session_id: str | None = Field(default=None, max_length=128)
     # Explicit skill selections must already be locally approved.
     skill_ids: list[str] = Field(default_factory=list, max_length=5)
-    model_route: ModelRoute = "auto"
+    model_route: str = Field(default="auto", min_length=1, max_length=48, pattern=r"^[a-z0-9][a-z0-9_-]{0,47}$")
 
 
 class TaskResponse(BaseModel):
