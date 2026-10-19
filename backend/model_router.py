@@ -217,6 +217,8 @@ def _build_user_message(
     skills: list[dict[str, str]],
     additional_context: str | None = None,
 ) -> str:
+    if not additional_context and not skills:
+        return prompt
     sections = []
     if additional_context:
         sections.append(
