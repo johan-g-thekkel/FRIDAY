@@ -250,6 +250,10 @@ async def create_plan(
                 "Unknown model route. Check GET /api/v1/models for configured route IDs."
             )
         if not selected_profile["available"]:
+            if selected_profile["status"] == "disabled_in_config":
+                raise ModelRouteUnavailable(
+                    f"Model route '{requested_route}' is disabled in MODEL_PROFILES_PATH."
+                )
             raise ModelRouteUnavailable(
                 f"Model route '{requested_route}' is missing its configured API key. "
                 f"Set {selected_profile['api_key_env']} in the local environment."
