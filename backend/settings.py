@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     skills_policy_path: str = "./data/skills-policy.json"
     max_active_skills: int = 2
     max_skill_context_chars: int = 6000
+    agent_timeout_seconds: int = 900
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(

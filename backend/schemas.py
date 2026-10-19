@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-TaskStatus = Literal["planned", "failed"]
+TaskStatus = Literal["planned", "running", "completed", "failed"]
 TaskCategory = Literal["coding", "research", "iot", "personal", "creative", "general"]
 TaskRisk = Literal["low", "medium", "high", "critical"]
 
@@ -12,7 +12,6 @@ TaskRisk = Literal["low", "medium", "high", "critical"]
 class TaskCreate(BaseModel):
     prompt: str = Field(min_length=1, max_length=8000)
     session_id: str | None = Field(default=None, max_length=128)
-    # Explicit skill selections must already be locally approved.
     skill_ids: list[str] = Field(default_factory=list, max_length=5)
     model_route: str = Field(default="auto", min_length=1, max_length=48, pattern=r"^[a-z0-9][a-z0-9_-]{0,47}$")
 
@@ -30,6 +29,12 @@ class TaskResponse(BaseModel):
     plan: list[str]
     created_at: datetime
     skills_used: list[str] = Field(default_factory=list)
+    execution_mode: Literal["plan_only", "agent"] = "plan_only"
+    agent_name: str | None = None
+    workspace_path: str | None = None
+    result_text: str | None = None
+    execution_log: list[str] = Field(default_factory=list)
+    updated_at: datetime | None = None
 
 
 class BackendStatus(BaseModel):

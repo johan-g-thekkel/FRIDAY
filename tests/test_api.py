@@ -319,3 +319,63 @@ def test_api_root_remains_available(tmp_path):
         response = client.get("/api")
         assert response.status_code == 200
         assert response.json()["ui"] == "/"
+
+ 
+def test_new_tasks_have_explicit_plan_only_lifecycle(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.post("/api/v1/tasks", json={"prompt": "Help me debug my Python API"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["execution_mode"] == "plan_only"
+        assert body["agent_name"] is None
+        assert body["execution_log"]
+        fetched = client.get(f"/api/v1/tasks/{body['id']}").json()
+        assert fetched["execution_mode"] == "plan_only"
+        assert fetched["execution_log"]
+
+
+def test_agent_run_is_refused_when_codex_is_not_installed(tmp_path, monkeypatch):
+    import backend.main as main_module
+    monkeypatch.setattr(main_module, "agent_available", lambda: False)
+    with _client_for_test(tmp_path) as client:
+        created = client.post("/api/v1/tasks", json={"prompt": "Build a Python calculator with unit tests"})
+        assert created.status_code == 200
+        task_id = created.json()["id"]
+        run = client.post(f"/api/v1/tasks/{task_id}/run")
+        assert run.status_code == 409
+        assert "Codex CLI is not installed" in run.json()["detail"]
+        assert client.get(f"/api/v1/tasks/{task_id}").json()["status"] == "planned"
+
+
+def test_non_coding_tasks_cannot_be_sent_to_coding_worker(tmp_path, monkeypatch):
+    import backend.main as main_module
+    monkeypatch.setattr(main_module, "agent_available", lambda: True)
+    with _client_for_test(tmp_path) as client:
+        created = client.post("/api/v1/tasks", json={"prompt": "Research recent discoveries in astronomy"})
+        assert created.status_code == 200
+        response = client.post(f"/api/v1/tasks/{created.json()['id']}/run")
+        assert response.status_code == 409
+        assert "Only coding tasks" in response.json()["detail"]
+
+
+def test_task_lifecycle_fields_can_be_updated_and_read(tmp_path):
+    from backend.database import get_task, init_db, insert_task, update_task, utc_now
+    os.environ["SQLITE_PATH"] = str(tmp_path / "task-lifecycle.db")
+    get_settings.cache_clear()
+    init_db()
+    insert_task({
+        "id": "lifecycle-test", "session_id": "session-test",
+        "prompt": "Build a Python calculator", "status": "planned",
+        "category": "coding", "provider": "local-fallback", "model": None,
+        "risk": "medium", "approval_required": False, "plan": ["Implement", "Test"],
+        "created_at": utc_now(), "skills_used": [], "execution_log": ["Plan created"],
+        "execution_mode": "plan_only",
+    })
+    assert update_task("lifecycle-test", status="running", execution_mode="agent",
+                       agent_name="OpenAI Codex CLI", execution_log=["Queued", "Running"],
+                       updated_at=utc_now())
+    saved = get_task("lifecycle-test")
+    assert saved["status"] == "running"
+    assert saved["execution_mode"] == "agent"
+    assert saved["agent_name"] == "OpenAI Codex CLI"
+    assert saved["execution_log"] == ["Queued", "Running"]

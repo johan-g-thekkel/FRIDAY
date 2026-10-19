@@ -3,12 +3,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import get_task, init_db, insert_task, list_tasks
+from backend.database import get_task, init_db, insert_task, list_tasks, update_task, utc_now
 from backend.integration_registry import list_integrations
 from backend.model_profiles import public_model_profiles
 from backend.model_router import (
@@ -19,6 +19,7 @@ from backend.model_router import (
 from backend.skill_registry import list_skill_metadata, SkillNotApprovedError
 from backend.schemas import BackendStatus, TaskCreate, TaskResponse
 from backend.settings import get_settings
+from backend.agent_runner import agent_available, run_codex_task
 
 
 @asynccontextmanager
@@ -159,7 +160,7 @@ async def model_routes():
                 "details": "Optional premium reasoning route; it is disabled by default and remains behind a prompt-size and approximate-cost guard.",
             },
         ] + public_model_profiles(),
-        "note": "NVIDIA NIM supports configured compatible chat models (including Nemotron where available). Additional OpenAI-compatible models can be added in data/model-profiles.json. Hermes, Codex, Claude Code, Needle 3, and local GLM-V runtimes still need separate agent/model adapters.",
+        "note": "NVIDIA NIM supports configured compatible chat models (including Nemotron where available). Additional OpenAI-compatible models can be added in data/model-profiles.json. A supervised Codex CLI worker is available for eligible coding tasks when installed; Hermes and Claude Code remain inventory-only pending separate adapters.",
     }
 
 
@@ -217,12 +218,41 @@ async def create_task(request: TaskCreate):
         "plan": plan["plan"],
         "created_at": now,
         "skills_used": plan.get("skills_used", []),
+        "execution_mode": "plan_only",
+        "agent_name": None,
+        "workspace_path": None,
+        "result_text": None,
+        "execution_log": ["Task plan created. No tools or commands have run."],
+        "updated_at": now.isoformat(),
     }
     insert_task({
         **task,
         "created_at": now.isoformat(),
     })
     return TaskResponse(**task)
+
+
+@app.post("/api/v1/tasks/{task_id}/run", response_model=TaskResponse, tags=["tasks"])
+async def run_task_with_agent(task_id: str, background_tasks: BackgroundTasks):
+    """Run an eligible coding task inside a disposable Codex-controlled Git worktree."""
+    task = get_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    if task["status"] != "planned" or task.get("execution_mode") != "plan_only":
+        raise HTTPException(status_code=409, detail="This task has already been submitted to an agent or is not in a runnable state.")
+    if task["category"] != "coding":
+        raise HTTPException(status_code=409, detail="Only coding tasks can be sent to the isolated coding worker. Other task categories remain plan-only.")
+    if task["risk"] in {"high", "critical"} or task["approval_required"]:
+        raise HTTPException(status_code=409, detail="This task is marked high-risk or requires approval. The coding worker will not run it automatically.")
+    if not agent_available():
+        raise HTTPException(status_code=409, detail="OpenAI Codex CLI is not installed or not on PATH. Install and authenticate Codex CLI, then restart TEDDY.")
+    log = list(task.get("execution_log", []))
+    log.append("Queued for Codex CLI in a separate Git worktree. The main working tree will not be edited by this run.")
+    update_task(task_id, status="running", execution_mode="agent",
+                agent_name="OpenAI Codex CLI", execution_log=log[-80:], updated_at=utc_now())
+    updated = get_task(task_id)
+    background_tasks.add_task(run_codex_task, task_id)
+    return TaskResponse(**updated)
 
 
 @app.get("/api/v1/tasks", response_model=list[TaskResponse], tags=["tasks"])
