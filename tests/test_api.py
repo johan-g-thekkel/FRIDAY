@@ -14,6 +14,9 @@ def _client_for_test(tmp_path: Path):
     os.environ.pop("NEBIUS_MODEL", None)
     os.environ.pop("NVIDIA_API_KEY", None)
     os.environ.pop("NVIDIA_MODEL", None)
+    os.environ.pop("OPENAI_COMPATIBLE_API_KEY", None)
+    os.environ.pop("OPENAI_COMPATIBLE_BASE_URL", None)
+    os.environ.pop("OPENAI_COMPATIBLE_MODEL", None)
     os.environ.pop("ANTHROPIC_API_KEY", None)
     os.environ["CLAUDE_FABLE_ENABLED"] = "false"
     get_settings.cache_clear()
@@ -66,6 +69,7 @@ def test_integrations_endpoint_reports_status(tmp_path):
         assert {
             "local_fallback",
             "nvidia_nim",
+            "openai_compatible",
             "claude_fable_5_1",
             "nex_n2_5",
             "needle_3",
@@ -82,6 +86,7 @@ def test_integrations_endpoint_reports_status(tmp_path):
             "cl4r1t4s_prompt_archive",
         }.issubset(by_id.keys())
         assert by_id["nvidia_nim"]["status"] == "needs_setup"
+        assert by_id["openai_compatible"]["status"] == "needs_setup"
         assert by_id["blynk"]["status"] == "firmware_library_received_backend_adapter_pending"
         assert by_id["cl4r1t4s_prompt_archive"]["status"] == "quarantined_not_enabled"
         assert all(item.get("status") for item in items)
@@ -248,6 +253,7 @@ def test_model_routes_report_only_configured_providers(tmp_path):
         assert routes["auto"]["available"] is True
         assert routes["nebius"]["available"] is False
         assert routes["nvidia_nim"]["available"] is False
+        assert routes["openai_compatible"]["available"] is False
         assert routes["claude_fable"]["available"] is False
 
 
@@ -275,3 +281,16 @@ def test_unconfigured_nvidia_route_returns_conflict(tmp_path):
         )
         assert response.status_code == 409
         assert "nvidia" in response.json()["detail"].lower()
+
+
+def test_unconfigured_custom_model_route_returns_conflict(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.post(
+            "/api/v1/tasks",
+            json={
+                "prompt": "Summarize this task",
+                "model_route": "openai_compatible",
+            },
+        )
+        assert response.status_code == 409
+        assert "openai-compatible" in response.json()["detail"].lower()
