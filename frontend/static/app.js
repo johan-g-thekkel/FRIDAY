@@ -5,6 +5,8 @@
     status: null,
     models: { routes: [] },
     integrations: [],
+    bots: [],
+    editingBotId: null,
     skills: { skills: [], count: 0 },
     tasks: [],
     selectedTaskId: null,
@@ -85,9 +87,10 @@
     state.view = view;
     $$(".view-section").forEach(function (element) { element.classList.toggle("active", element.id === "view-" + view); });
     $$(".nav-item").forEach(function (element) { element.classList.toggle("active", element.getAttribute("data-view-target") === view); });
-    const labelMap = { overview: "COMMAND CENTRE", tasks: "TASK HISTORY", models: "MODEL ROUTES", integrations: "AGENTS & INTEGRATIONS", skills: "SKILLS LIBRARY" };
+    const labelMap = { overview: "COMMAND CENTRE", tasks: "TASK HISTORY", bots: "BOT STUDIO", models: "MODEL ROUTES", integrations: "AGENTS & INTEGRATIONS", skills: "SKILLS LIBRARY" };
     $("#page-crumb").textContent = labelMap[view] || "COMMAND CENTRE";
     if (view === "tasks") renderAllTasks();
+    if (view === "bots") renderBots();
     if (view === "models") renderModels();
     if (view === "integrations") renderIntegrations();
     if (view === "skills") renderSkills();
@@ -104,12 +107,22 @@
     const valid = state.models.routes.find(function (route) { return route.id === current && route.available; });
     select.value = valid ? current : (state.models.default_route || "auto");
     updateRouteHelp();
+    const botRoute = $("#bot-default-route");
+    if (botRoute) {
+      const botCurrent = botRoute.value || "auto";
+      botRoute.innerHTML = state.models.routes.map(function (route) {
+        const disabled = !route.available && route.id !== "auto";
+        return '<option value="' + escapeHtml(route.id) + '"' + (disabled ? " disabled" : "") + '>' + escapeHtml(route.name + (disabled ? " — setup required" : "")) + '</option>';
+      }).join("");
+      botRoute.value = state.models.routes.some(function (route) { return route.id === botCurrent && route.available; }) ? botCurrent : "auto";
+    }
   }
   function updateRouteHelp() {
     const selected = routeById($("#model-route").value);
     $("#route-help").textContent = selected ? selected.details : "Select an available model route.";
   }
   function renderComposerSkills() {
+    renderBotSelect();
     const approved = state.skills.skills.filter(function (skill) { return skill.status === "enabled_reviewed"; });
     const wrap = $("#composer-skills");
     if (!approved.length) {
@@ -180,7 +193,7 @@
     const plan = Array.isArray(task.plan) ? task.plan : [];
     const codexItem = state.integrations.find(function (item) { return item.id === "codex_cli"; });
     const codexReady = !!(codexItem && String(codexItem.status).indexOf("installed_needs_verification") >= 0);
-    const canRun = task.status === "planned" && task.category === "coding" && !task.approval_required && !["high", "critical"].includes(task.risk);
+    const canRun = task.status === "planned" && task.category === "coding" && !task.approval_required && !["high", "critical"].includes(task.risk) && (!task.bot_id || task.bot_runtime === "codex_cli");
     const executionLog = Array.isArray(task.execution_log) ? task.execution_log : [];
     let workerSection = "";
     if (task.status === "planned" && task.category === "coding") {
@@ -197,7 +210,7 @@
     target.innerHTML = '<div class="detail-kicker">TASK / ' + escapeHtml(String(task.id).slice(0, 8).toUpperCase()) + '</div>' +
       '<div class="detail-prompt">' + escapeHtml(taskTitle(task)) + '</div>' +
       '<div class="task-row-meta"><span class="mini-status">' + escapeHtml(task.status || "planned") + '</span><span>Created ' + escapeHtml(fullDate(task.created_at)) + '</span></div>' +
-      '<div class="detail-meta-grid"><div class="detail-meta"><label>MODEL PROVIDER</label><strong>' + escapeHtml(task.provider || "unknown") + '</strong></div><div class="detail-meta"><label>MODEL</label><strong>' + escapeHtml(task.model || "Deterministic fallback") + '</strong></div><div class="detail-meta"><label>CATEGORY</label><strong>' + escapeHtml(readable(task.category)) + '</strong></div><div class="detail-meta"><label>RISK LEVEL</label><strong>' + escapeHtml(readable(task.risk)) + '</strong></div><div class="detail-meta"><label>AGENT RUNTIME</label><strong>' + escapeHtml(task.agent_name || "Not started") + '</strong></div></div>' +
+      '<div class="detail-meta-grid"><div class="detail-meta"><label>MODEL PROVIDER</label><strong>' + escapeHtml(task.provider || "unknown") + '</strong></div><div class="detail-meta"><label>MODEL</label><strong>' + escapeHtml(task.model || "Deterministic fallback") + '</strong></div><div class="detail-meta"><label>CATEGORY</label><strong>' + escapeHtml(readable(task.category)) + '</strong></div><div class="detail-meta"><label>RISK LEVEL</label><strong>' + escapeHtml(readable(task.risk)) + '</strong></div><div class="detail-meta"><label>BOT PROFILE</label><strong>' + escapeHtml(task.bot_name || "TEDDY default") + '</strong></div><div class="detail-meta"><label>AGENT RUNTIME</label><strong>' + escapeHtml(task.agent_name || "Not started") + '</strong></div></div>' +
       '<div class="detail-plan-title">GENERATED PLAN · ' + plan.length + ' STEPS</div>' +
       '<ol class="plan-list">' + plan.map(function (step) { return '<li>' + escapeHtml(step) + '</li>'; }).join("") + '</ol>' +
       workerSection +
@@ -279,6 +292,157 @@
       return '<tr><td><span class="skill-name">' + escapeHtml(skill.name) + '</span><span class="skill-desc">' + escapeHtml(skill.description) + '</span><span class="skill-desc">' + escapeHtml(skill.path) + '</span></td><td>' + escapeHtml(skill.source) + '</td><td>' + statusPill(skill.status) + '</td><td><div class="skill-runtimes">' + (runtimes || '<span class="runtime-chip">Text model</span>') + '</div></td></tr>';
     }).join("") : '<tr><td colspan="4" class="table-empty">' + (state.skills.count ? "No skills match those filters." : "No local skills discovered. Import skills into skills/imported and refresh.") + '</td></tr>';
   }
+  function renderBotSelect() {
+    const select = $("#bot-select");
+    if (!select) return;
+    const current = select.value;
+    const enabled = state.bots.filter(function (bot) { return bot.enabled; });
+    select.innerHTML = '<option value="">TEDDY default</option>' + enabled.map(function (bot) {
+      return '<option value="' + escapeHtml(bot.id) + '">' + escapeHtml(bot.name) + '</option>';
+    }).join("");
+    select.value = enabled.some(function (bot) { return bot.id === current; }) ? current : "";
+  }
+  function renderBotSkillPicker(selectedIds) {
+    const root = $("#bot-skill-picker");
+    if (!root) return;
+    const approved = state.skills.skills.filter(function (skill) { return skill.status === "enabled_reviewed"; });
+    if (!approved.length) {
+      root.innerHTML = '<span class="muted-small">No reviewed skills enabled. Review skills via the guarded CLI first.</span>';
+      return;
+    }
+    const wanted = new Set(selectedIds || []);
+    root.innerHTML = approved.map(function (skill) {
+      return '<label class="bot-skill-option"><input type="checkbox" value="' + escapeHtml(skill.id) + '"' + (wanted.has(skill.id) ? " checked" : "") + '><span><strong>' + escapeHtml(skill.name) + '</strong><small>' + escapeHtml(skill.description) + '</small></span></label>';
+    }).join("");
+  }
+  function renderBots() {
+    renderBotSelect();
+    renderBotSkillPicker(state.editingBotId ? ((state.bots.find(function (bot) { return bot.id === state.editingBotId; }) || {}).skill_ids || []) : []);
+    $("#bot-count-label").textContent = state.bots.length + " saved bot" + (state.bots.length === 1 ? "" : "s");
+    $("#nav-bot-count").textContent = String(state.bots.length);
+    const root = $("#bot-list");
+    if (!state.bots.length) {
+      root.innerHTML = '<div class="empty-state"><div class="empty-glyph">⌬</div><strong>No Bots created yet</strong><p>Create a profile to give TEDDY a reusable role and context.</p></div>';
+      return;
+    }
+    root.innerHTML = state.bots.map(function (bot) {
+      const skillNames = (bot.skill_ids || []).map(function (id) {
+        const skill = state.skills.skills.find(function (candidate) { return candidate.id === id; });
+        return skill ? skill.name : "Missing skill";
+      });
+      return '<article class="bot-card"><div class="bot-card-head"><div class="model-logo">⌬</div><div class="bot-card-identity"><h3>' + escapeHtml(bot.name) + '</h3><p>' + escapeHtml(bot.description || "Specialist Bot") + '</p></div><span class="status-label ' + (bot.enabled ? "good" : "neutral") + '">' + (bot.enabled ? "Enabled" : "Disabled") + '</span></div>' +
+        '<div class="bot-card-tags"><span class="bot-tag">' + escapeHtml(readable(bot.runtime)) + '</span><span class="bot-tag">' + escapeHtml((routeById(bot.default_model_route) || {}).name || bot.default_model_route) + '</span><span class="bot-tag">' + skillNames.length + ' skills</span></div>' +
+        '<div class="bot-card-copy"><label>INSTRUCTIONS</label><p>' + escapeHtml(bot.instructions) + '</p></div>' +
+        (bot.memory ? '<div class="bot-card-memory"><label>LOCAL NOTES</label><p>' + escapeHtml(bot.memory) + '</p></div>' : '') +
+        '<div class="bot-card-actions"><button class="secondary-button" data-bot-action="use" data-bot-id="' + escapeHtml(bot.id) + '"' + (!bot.enabled ? " disabled" : "") + '>Use for task</button><button class="secondary-button" data-bot-action="edit" data-bot-id="' + escapeHtml(bot.id) + '">Edit</button><button class="text-button" data-bot-action="toggle" data-bot-id="' + escapeHtml(bot.id) + '">' + (bot.enabled ? "Disable" : "Enable") + '</button><button class="text-button danger-text" data-bot-action="delete" data-bot-id="' + escapeHtml(bot.id) + '">Delete</button></div></article>';
+    }).join("");
+  }
+  function resetBotForm() {
+    state.editingBotId = null;
+    $("#bot-form").reset();
+    $("#bot-enabled").checked = true;
+    $("#bot-form-title").textContent = "Create a specialist";
+    $("#bot-form-eyebrow").textContent = "NEW BOT PROFILE";
+    $("#save-bot-button").innerHTML = '<span>Create Bot</span><span class="button-arrow">↗</span>';
+    $("#cancel-bot-edit").hidden = true;
+    $("#bot-form-feedback").hidden = true;
+    renderBotSkillPicker([]);
+  }
+  function editBot(botId) {
+    const bot = state.bots.find(function (item) { return item.id === botId; });
+    if (!bot) return;
+    state.editingBotId = botId;
+    $("#bot-name").value = bot.name;
+    $("#bot-description").value = bot.description || "";
+    $("#bot-instructions").value = bot.instructions || "";
+    $("#bot-memory").value = bot.memory || "";
+    $("#bot-runtime").value = bot.runtime;
+    $("#bot-default-route").value = bot.default_model_route || "auto";
+    $("#bot-enabled").checked = !!bot.enabled;
+    renderBotSkillPicker(bot.skill_ids || []);
+    $("#bot-form-title").textContent = "Edit " + bot.name;
+    $("#bot-form-eyebrow").textContent = "EDIT BOT PROFILE";
+    $("#save-bot-button").innerHTML = '<span>Save changes</span><span class="button-arrow">↗</span>';
+    $("#cancel-bot-edit").hidden = false;
+    $("#bot-form-feedback").hidden = true;
+    $("#bot-form").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function showBotFeedback(message, isError) {
+    const box = $("#bot-form-feedback");
+    box.hidden = false;
+    box.textContent = message;
+    box.classList.toggle("error", !!isError);
+  }
+  async function saveBot(event) {
+    event.preventDefault();
+    const payload = {
+      name: $("#bot-name").value.trim(),
+      description: $("#bot-description").value.trim(),
+      instructions: $("#bot-instructions").value.trim(),
+      memory: $("#bot-memory").value.trim(),
+      runtime: $("#bot-runtime").value,
+      default_model_route: $("#bot-default-route").value || "auto",
+      skill_ids: $("#bot-skill-picker input[type=checkbox]:checked").map(function (input) { return input.value; }),
+      enabled: $("#bot-enabled").checked
+    };
+    const button = $("#save-bot-button");
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span>Saving Bot…</span>';
+    try {
+      if (state.editingBotId) {
+        await api("/api/v1/bots/" + encodeURIComponent(state.editingBotId), {
+          method: "PATCH", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload)
+        });
+        toast("Bot profile updated.");
+      } else {
+        await api("/api/v1/bots", {
+          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload)
+        });
+        toast("Bot profile saved.");
+      }
+      resetBotForm();
+      await loadAll(false);
+      setView("bots");
+    } catch (error) {
+      showBotFeedback(error.message, true);
+    } finally {
+      button.disabled = false;
+      if (!state.editingBotId) button.innerHTML = original;
+    }
+  }
+  async function botAction(action, botId) {
+    const bot = state.bots.find(function (item) { return item.id === botId; });
+    if (!bot) return;
+    try {
+      if (action === "edit") { editBot(botId); return; }
+      if (action === "use") {
+        $("#bot-select").value = botId;
+        setView("overview");
+        toast("Selected " + bot.name + " for the next task.");
+        return;
+      }
+      if (action === "toggle") {
+        await api("/api/v1/bots/" + encodeURIComponent(botId), {
+          method: "PATCH", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ enabled: !bot.enabled })
+        });
+        await loadAll(false);
+        setView("bots");
+        toast(bot.enabled ? "Bot disabled." : "Bot enabled.");
+        return;
+      }
+      if (action === "delete") {
+        if (!window.confirm('Delete Bot "' + bot.name + '"? Existing task records will remain.')) return;
+        await api("/api/v1/bots/" + encodeURIComponent(botId), { method: "DELETE", headers: { "Accept": "application/json" } });
+        if (state.editingBotId === botId) resetBotForm();
+        await loadAll(false);
+        setView("bots");
+        toast("Bot deleted.");
+      }
+    } catch (error) {
+      toast(error.message, true);
+    }
+  }
   async function loadAll(showErrors) {
     try {
       const results = await Promise.all([
@@ -287,13 +451,15 @@
         api("/api/v1/models"),
         api("/api/v1/integrations"),
         api("/api/v1/skills"),
-        api("/api/v1/tasks?limit=100")
+        api("/api/v1/tasks?limit=100"),
+        api("/api/v1/bots")
       ]);
       state.status = results[1];
       state.models = results[2];
       state.integrations = results[3].integrations || [];
       state.skills = results[4];
       state.tasks = results[5];
+      state.bots = results[6];
       if (!state.tasks.some(function (task) { return task.id === state.selectedTaskId; })) {
         state.selectedTaskId = state.tasks.length ? state.tasks[0].id : null;
       }
@@ -306,6 +472,7 @@
       renderOverviewModels();
       renderOverviewIntegrations();
       if (state.view === "tasks") renderAllTasks();
+      if (state.view === "bots") renderBots();
       if (state.view === "models") renderModels();
       if (state.view === "integrations") renderIntegrations();
       if (state.view === "skills") renderSkills();
@@ -334,7 +501,7 @@
       const task = await api("/api/v1/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ prompt: prompt, model_route: route, skill_ids: selectedSkills() })
+        body: JSON.stringify({ prompt: prompt, model_route: route, skill_ids: selectedSkills(), bot_id: $("#bot-select").value || null })
       });
       $("#task-prompt").value = "";
       $("#prompt-counter").textContent = "0 / 8000";
@@ -391,6 +558,11 @@
         if (view) setView(view);
         return;
       }
+      const botActionButton = event.target.closest("[data-bot-action]");
+      if (botActionButton) {
+        botAction(botActionButton.getAttribute("data-bot-action"), botActionButton.getAttribute("data-bot-id"));
+        return;
+      }
       if (event.target.closest("#run-codex-task")) {
         const button = event.target.closest("#run-codex-task");
         runCodingTask(button.getAttribute("data-task-id"), button);
@@ -408,6 +580,9 @@
     $("#tasks-refresh").addEventListener("click", function () { loadAll(true); });
     $("#integrations-refresh").addEventListener("click", function () { loadAll(true); });
     $("#task-form").addEventListener("submit", submitTask);
+    $("#bot-form").addEventListener("submit", saveBot);
+    $("#cancel-bot-edit").addEventListener("click", resetBotForm);
+    $("#bots-refresh").addEventListener("click", function () { loadAll(true); });
     $("#task-prompt").addEventListener("input", function () { $("#prompt-counter").textContent = this.value.length + " / 8000"; });
     $("#model-route").addEventListener("change", updateRouteHelp);
     $("#task-search").addEventListener("input", renderAllTasks);
