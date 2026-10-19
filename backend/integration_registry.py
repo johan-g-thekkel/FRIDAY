@@ -50,6 +50,14 @@ def list_integrations() -> list[dict[str, Any]]:
             "details": "Credentials are never returned by this endpoint.",
         },
         {
+            "id": "nvidia_nim",
+            "name": "NVIDIA NIM",
+            "kind": "model_provider",
+            "status": "configured_not_tested" if settings.nvidia_ready else "needs_setup",
+            "purpose": "Hosted NVIDIA model inference, including Nemotron models when available",
+            "details": "Requires NVIDIA_API_KEY and an exact NVIDIA_MODEL ID. Credentials are never returned by this endpoint.",
+        },
+        {
             "id": "claude_fable_5_1",
             "name": "Claude Fable 5.1",
             "kind": "model_provider",
