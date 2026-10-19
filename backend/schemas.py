@@ -12,6 +12,8 @@ TaskRisk = Literal["low", "medium", "high", "critical"]
 class TaskCreate(BaseModel):
     prompt: str = Field(min_length=1, max_length=8000)
     session_id: str | None = Field(default=None, max_length=128)
+    # Explicit skill selections must already be locally approved.
+    skill_ids: list[str] = Field(default_factory=list, max_length=5)
 
 
 class TaskResponse(BaseModel):
@@ -26,6 +28,7 @@ class TaskResponse(BaseModel):
     approval_required: bool
     plan: list[str]
     created_at: datetime
+    skills_used: list[str] = Field(default_factory=list)
 
 
 class BackendStatus(BaseModel):
