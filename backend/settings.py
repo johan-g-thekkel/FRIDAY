@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     nvidia_api_key: str | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     nvidia_model: str | None = None
+    # Generic route for other OpenAI-compatible model gateways.
+    openai_compatible_api_key: str | None = None
+    openai_compatible_base_url: str | None = None
+    openai_compatible_model: str | None = None
+    openai_compatible_name: str = "Custom OpenAI-compatible model"
     # Fable is opt-in to avoid unexpected paid inference calls.
     anthropic_api_key: str | None = None
     claude_fable_model: str = "claude-fable-5-1"
@@ -42,6 +47,14 @@ class Settings(BaseSettings):
     @property
     def nvidia_ready(self) -> bool:
         return bool(self.nvidia_api_key and self.nvidia_model)
+
+    @property
+    def openai_compatible_ready(self) -> bool:
+        return bool(
+            self.openai_compatible_api_key
+            and self.openai_compatible_base_url
+            and self.openai_compatible_model
+        )
 
     @property
     def claude_fable_ready(self) -> bool:
