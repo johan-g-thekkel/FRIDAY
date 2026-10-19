@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import get_task, init_db, insert_task, list_tasks
 from backend.integration_registry import list_integrations
+from backend.skill_registry import list_skill_metadata
 from backend.model_router import create_plan
 from backend.schemas import BackendStatus, TaskCreate, TaskResponse
 from backend.settings import get_settings
@@ -77,6 +78,12 @@ async def backend_status():
 async def integration_status():
     """Report integration readiness without exposing credentials or running tools."""
     return {"integrations": list_integrations()}
+
+
+@app.get("/api/v1/skills", tags=["skills"])
+async def skill_inventory():
+    """Return imported skill metadata; discovered skills are never enabled automatically."""
+    return list_skill_metadata()
 
 
 @app.post("/api/v1/tasks", response_model=TaskResponse, tags=["tasks"])
