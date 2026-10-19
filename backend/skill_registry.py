@@ -175,7 +175,7 @@ def list_skill_metadata() -> dict[str, Any]:
         "count": len(skills),
         "root_available": True,
         "truncated": len(skills) >= MAX_SKILL_FILES,
-        "note": "Only skills explicitly reviewed and hash-matched in the local policy can be selected for model planning.",
+        "note": "Metadata only. Skills must be explicitly reviewed and hash-matched in the local policy before they can be selected for model planning.",
     }
 
 
