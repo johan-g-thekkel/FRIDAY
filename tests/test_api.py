@@ -9,6 +9,7 @@ from backend.settings import get_settings
 def _client_for_test(tmp_path: Path):
     os.environ["SQLITE_PATH"] = str(tmp_path / "teddy-test.db")
     os.environ["SKILLS_ROOT"] = str(tmp_path / "skills")
+    os.environ["SKILLS_POLICY_PATH"] = str(tmp_path / "data" / "skills-policy.json")
     os.environ.pop("NEBIUS_API_KEY", None)
     os.environ.pop("NEBIUS_MODEL", None)
     os.environ.pop("ANTHROPIC_API_KEY", None)
@@ -39,6 +40,7 @@ def test_create_and_read_task(tmp_path):
         assert body["category"] == "coding"
         assert body["plan"]
         assert body["provider"] == "local-fallback"
+        assert body["skills_used"] == []
 
         fetched = client.get(f"/api/v1/tasks/{body['id']}")
         assert fetched.status_code == 200
@@ -143,3 +145,68 @@ def test_skill_inventory_reads_metadata_and_keeps_skills_disabled(tmp_path):
         assert skill["status"] == "disabled_pending_review"
         assert skill["description"].startswith("Verify task output")
         assert body["note"].startswith("Metadata only")
+
+
+def test_approved_skill_context_is_selected_and_hash_pinned(tmp_path):
+    import hashlib
+    import json
+
+    from backend.skill_registry import (
+        SkillNotApprovedError,
+        get_enabled_skill_context,
+        list_skill_metadata,
+    )
+
+    skill_dir = tmp_path / "skills" / "ECC" / "verification-loop"
+    skill_dir.mkdir(parents=True)
+    skill_file = skill_dir / "SKILL.md"
+    skill_text = (
+        "---\n"
+        "name: verification-loop\n"
+        "description: Verify code changes with focused tests before reporting success.\n"
+        "---\n"
+        "# Verification Loop\n"
+        "Run focused tests and report evidence.\n"
+    )
+    skill_file.write_text(skill_text, encoding="utf-8")
+    skill_hash = hashlib.sha256(skill_file.read_bytes()).hexdigest()
+
+    with _client_for_test(tmp_path):
+        inventory = list_skill_metadata()
+        assert inventory["count"] == 1
+        skill = inventory["skills"][0]
+        assert skill["status"] == "disabled_pending_review"
+
+        with __import__("pytest").raises(SkillNotApprovedError):
+            get_enabled_skill_context(
+                "Add Python unit tests", requested_skill_ids=[skill["id"]]
+            )
+
+        policy_path = tmp_path / "data" / "skills-policy.json"
+        policy_path.parent.mkdir(parents=True, exist_ok=True)
+        policy_path.write_text(
+            json.dumps({
+                "version": 1,
+                "skills": {
+                    "ECC/verification-loop/SKILL.md": {
+                        "enabled": True,
+                        "content_sha256": skill_hash,
+                        "reviewed_at": "2026-10-19T00:00:00Z",
+                    }
+                },
+            }),
+            encoding="utf-8",
+        )
+        selected = get_enabled_skill_context(
+            "Add Python unit tests and verify the changes",
+            requested_skill_ids=[skill["id"]],
+        )
+        assert len(selected) == 1
+        assert selected[0]["name"] == "verification-loop"
+        assert "Run focused tests" in selected[0]["content"]
+
+        skill_file.write_text(skill_text + "\nChanged after review.\n", encoding="utf-8")
+        with __import__("pytest").raises(SkillNotApprovedError):
+            get_enabled_skill_context(
+                "Add Python unit tests", requested_skill_ids=[skill["id"]]
+            )
