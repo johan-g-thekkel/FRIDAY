@@ -20,7 +20,7 @@ The initial backend is now in the repository:
 - Integration-readiness endpoint that distinguishes configured, missing, and planned routes
 - Optional Claude Fable 5.1 reasoning route, disabled by default and gated by complexity/budget heuristics
 - tmux development launcher for supervising the API terminal and a shell
-- No external action execution is enabled yet
+- An opt-in Codex CLI worker can execute eligible coding tasks in an isolated Git worktree; broad shell, IoT, messaging and deployment actions remain disabled
 
 This is a working **operator prototype**: the task planner, saved task lifecycle, command-centre UI, and an opt-in Codex coding worker are present. It does not send messages, control devices, use a webcam, or automatically merge agent changes.
 
@@ -236,9 +236,9 @@ pytest -q
 ## Security
 
 - Never commit API keys, tokens, or private credentials.
-- Model output is untrusted input and is not executed.
+- Model-planning output is validated before storage. Agent-written code is executed only through the explicitly requested Codex CLI worker and that CLI's workspace sandbox; never expose the prototype to untrusted users.
 - External actions are intentionally disabled in this initial backend.
-- Before enabling tools, add isolated workers, authorization checks, audit logs, and a bounded verification loop.
+- Review the worktree and run independent tests before manually applying changes; agent exit status is not proof that tests passed.
 
 ## License
 

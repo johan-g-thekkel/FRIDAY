@@ -379,3 +379,46 @@ def test_task_lifecycle_fields_can_be_updated_and_read(tmp_path):
     assert saved["execution_mode"] == "agent"
     assert saved["agent_name"] == "OpenAI Codex CLI"
     assert saved["execution_log"] == ["Queued", "Running"]
+
+ 
+def test_coding_task_is_dispatched_to_worker_when_available(tmp_path, monkeypatch):
+    import backend.main as main_module
+    from backend.database import update_task, utc_now
+
+    monkeypatch.setattr(main_module, "agent_available", lambda: True)
+
+    async def fake_worker(task_id):
+        update_task(task_id, status="completed", result_text="Mock worker complete",
+                    execution_log=["Mock worker completed"], updated_at=utc_now())
+
+    monkeypatch.setattr(main_module, "run_codex_task", fake_worker)
+    with _client_for_test(tmp_path) as client:
+        created = client.post("/api/v1/tasks", json={"prompt": "Build a Python calculator with tests"})
+        assert created.status_code == 200
+        task_id = created.json()["id"]
+        started = client.post(f"/api/v1/tasks/{task_id}/run")
+        assert started.status_code == 200
+        assert started.json()["execution_mode"] == "agent"
+        saved = client.get(f"/api/v1/tasks/{task_id}").json()
+        assert saved["status"] == "completed"
+        assert saved["result_text"] == "Mock worker complete"
+
+
+def test_interrupted_agent_tasks_are_recovered_on_restart(tmp_path):
+    from backend.database import fail_interrupted_agent_tasks, get_task, init_db, insert_task, update_task, utc_now
+    os.environ["SQLITE_PATH"] = str(tmp_path / "recover.db")
+    get_settings.cache_clear()
+    init_db()
+    insert_task({
+        "id": "recover-test", "session_id": "session-test",
+        "prompt": "Build a Python helper", "status": "running", "category": "coding",
+        "provider": "local-fallback", "model": None, "risk": "medium",
+        "approval_required": False, "plan": ["Implement"], "created_at": utc_now(),
+        "skills_used": [], "execution_log": ["Worker started"],
+        "execution_mode": "agent", "agent_name": "OpenAI Codex CLI",
+    })
+    assert fail_interrupted_agent_tasks() == 1
+    saved = get_task("recover-test")
+    assert saved["status"] == "failed"
+    assert "restarted" in saved["result_text"].lower()
+    assert any("restarted" in line.lower() for line in saved["execution_log"])

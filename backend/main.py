@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import claim_task_for_agent, get_task, init_db, insert_task, list_tasks, update_task, utc_now
+from backend.database import claim_task_for_agent, fail_interrupted_agent_tasks, get_task, init_db, insert_task, list_tasks, update_task, utc_now
 from backend.integration_registry import list_integrations
 from backend.model_profiles import public_model_profiles
 from backend.model_router import (
@@ -25,6 +25,7 @@ from backend.agent_runner import agent_available, run_codex_task
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    fail_interrupted_agent_tasks()
     yield
 
 

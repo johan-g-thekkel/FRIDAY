@@ -99,6 +99,27 @@ def update_task(task_id: str, **fields: Any) -> bool:
         return cursor.rowcount > 0
 
 
+def fail_interrupted_agent_tasks() -> int:
+    """Mark workers interrupted by a server restart as failed while retaining their worktrees."""
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT id, execution_log_json, result_text FROM tasks "
+            "WHERE status = 'running' AND execution_mode = 'agent'"
+        ).fetchall()
+        for row in rows:
+            try:
+                log = json.loads(row["execution_log_json"] or "[]")
+            except (ValueError, TypeError):
+                log = []
+            log.append("TEDDY restarted while this worker was marked running. Status was recovered to failed; inspect the retained worktree before retrying.")
+            connection.execute(
+                "UPDATE tasks SET status = 'failed', result_text = ?, execution_log_json = ?, updated_at = ? WHERE id = ?",
+                ("Backend restarted during agent execution. The worktree, if created, was retained for inspection.",
+                 json.dumps(log[-80:]), utc_now(), row["id"]),
+            )
+        return len(rows)
+
+
 def claim_task_for_agent(task_id: str, agent_name: str, log_entries: list[str]) -> bool:
     """Atomically claim a planned task so concurrent requests cannot launch two workers."""
     with _connect() as connection:
