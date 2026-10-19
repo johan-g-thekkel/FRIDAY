@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     claude_fable_max_prompt_chars: int = 8000
     claude_fable_max_estimated_cost_usd: float = 0.10
     sqlite_path: str = "./data/teddy.db"
+    skills_root: str = "./skills/imported"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(
