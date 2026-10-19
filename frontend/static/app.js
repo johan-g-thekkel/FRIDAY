@@ -56,7 +56,9 @@
   }
   function statusClass(status) {
     const s = String(status || "").toLowerCase();
-    if (["available", "configured", "ready", "enabled_reviewed", "installed_needs_verification", "runtime_detected_needs_test", "installed_needs_test"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "good";
+    if (["failed", "quarantined", "changed_since_review"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "bad";
+    if (s === "completed" || s === "available" || ["configured", "ready", "enabled_reviewed", "installed_needs_verification", "runtime_detected_needs_test", "installed_needs_test"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "good";
+    if (s === "running") return "warn";
     if (["needs_setup", "pending", "disabled", "source_received", "not_installed", "adapter_pending", "awaiting", "package_not_installed", "evaluation_required", "auth_and_docs_verification_pending"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "warn";
     if (["quarantined", "failed", "changed_since_review"].some(function (needle) { return s.indexOf(needle) >= 0; })) return "bad";
     return "neutral";
@@ -178,13 +180,31 @@
       return;
     }
     const plan = Array.isArray(task.plan) ? task.plan : [];
+    const codexItem = state.integrations.find(function (item) { return item.id === "codex_cli"; });
+    const codexReady = !!(codexItem && String(codexItem.status).indexOf("installed_needs_verification") >= 0);
+    const canRun = task.status === "planned" && task.category === "coding" && !task.approval_required && !["high", "critical"].includes(task.risk);
+    const executionLog = Array.isArray(task.execution_log) ? task.execution_log : [];
+    let workerSection = "";
+    if (task.status === "planned" && task.category === "coding") {
+      workerSection = canRun
+        ? (codexReady
+            ? '<button class="primary-button run-agent-button" id="run-codex-task" data-task-id="' + escapeHtml(task.id) + '"><span>Run in isolated Codex worktree</span><span class="button-arrow">↗</span></button><p class="worker-explainer">Runs in a separate Git worktree with Codex workspace-write sandbox. Changes are not merged automatically.</p>'
+            : '<div class="detail-notice">Codex CLI is not detected in TEDDY’s environment. Install and authenticate Codex CLI, restart the backend, and refresh status to enable the coding worker.</div>')
+        : '<div class="detail-notice">This coding task is blocked from automatic execution by its risk or approval flags.</div>';
+    } else if (task.status === "running") {
+      workerSection = '<div class="worker-status"><span class="activity-live-dot"></span><strong>Agent running</strong><span>Refreshing status automatically</span></div>';
+    } else if (task.status === "completed" || task.status === "failed") {
+      workerSection = '<div class="worker-result"><div class="detail-plan-title">AGENT RESULT</div><pre>' + escapeHtml(task.result_text || "No final message was saved.") + '</pre>' + (task.workspace_path ? '<div class="workspace-path"><span>WORKTREE</span><code>' + escapeHtml(task.workspace_path) + '</code></div>' : '') + '</div>';
+    }
     target.innerHTML = '<div class="detail-kicker">TASK / ' + escapeHtml(String(task.id).slice(0, 8).toUpperCase()) + '</div>' +
       '<div class="detail-prompt">' + escapeHtml(taskTitle(task)) + '</div>' +
       '<div class="task-row-meta"><span class="mini-status">' + escapeHtml(task.status || "planned") + '</span><span>Created ' + escapeHtml(fullDate(task.created_at)) + '</span></div>' +
       '<div class="detail-meta-grid"><div class="detail-meta"><label>MODEL PROVIDER</label><strong>' + escapeHtml(task.provider || "unknown") + '</strong></div><div class="detail-meta"><label>MODEL</label><strong>' + escapeHtml(task.model || "Deterministic fallback") + '</strong></div><div class="detail-meta"><label>CATEGORY</label><strong>' + escapeHtml(readable(task.category)) + '</strong></div><div class="detail-meta"><label>RISK LEVEL</label><strong>' + escapeHtml(readable(task.risk)) + '</strong></div></div>' +
       '<div class="detail-plan-title">GENERATED PLAN · ' + plan.length + ' STEPS</div>' +
       '<ol class="plan-list">' + plan.map(function (step) { return '<li>' + escapeHtml(step) + '</li>'; }).join("") + '</ol>' +
-      '<div class="detail-notice">Planning result only. TEDDY has not run commands, modified files, or launched an autonomous agent for this task.</div>';
+      workerSection +
+      (executionLog.length ? '<div class="execution-events"><div class="detail-plan-title">EVENT LOG</div><ol>' + executionLog.map(function (entry) { return '<li>' + escapeHtml(entry) + '</li>'; }).join("") + '</ol></div>' : '') +
+      (task.execution_mode === "plan_only" ? '<div class="detail-notice">Plan saved. No command has run yet.</div>' : '<div class="detail-notice">An agent run was explicitly requested. Review its worktree before applying any changes.</div>');
   }
   function selectTask(taskId) {
     const task = state.tasks.find(function (item) { return item.id === taskId; });
@@ -338,6 +358,27 @@
       button.innerHTML = original;
     }
   }
+  async function runCodingTask(taskId, button) {
+    if (!taskId || !button) return;
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span>Starting Codex…</span><span class="button-arrow">◌</span>';
+    try {
+      const task = await api("/api/v1/tasks/" + encodeURIComponent(taskId) + "/run", {
+        method: "POST",
+        headers: { "Accept": "application/json" }
+      });
+      state.selectedTaskId = task.id;
+      await loadAll(false);
+      setView("tasks");
+      renderAllTasks();
+      toast("Codex worker started in a separate Git worktree. Watch task status here.");
+    } catch (error) {
+      toast(error.message, true);
+      button.disabled = false;
+      button.innerHTML = original;
+    }
+  }
   function showFormFeedback(message, isError) {
     const element = $("#form-feedback");
     element.hidden = false;
@@ -350,6 +391,11 @@
       if (viewButton) {
         const view = viewButton.getAttribute("data-view-target");
         if (view) setView(view);
+        return;
+      }
+      if (event.target.closest("#run-codex-task")) {
+        const button = event.target.closest("#run-codex-task");
+        runCodingTask(button.getAttribute("data-task-id"), button);
         return;
       }
       const taskButton = event.target.closest("[data-task-id]");

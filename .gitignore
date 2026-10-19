@@ -16,3 +16,6 @@ build/
 
 # User-imported skills are kept local; the API indexes metadata only.
 skills/imported/
+
+# Disposable isolated workspaces created by the Codex worker.
+.teddy-worktrees/

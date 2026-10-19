@@ -6,7 +6,7 @@
 
 The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/static`). In Codespaces, open the forwarded port 8000 to use the command centre; no separate npm/Vite server is required. It loads `/health`, `/api/v1/status`, `/api/v1/models`, `/api/v1/integrations`, `/api/v1/skills`, and `/api/v1/tasks`, then polls for updates every eight seconds while the tab is visible. Task submission creates a persisted plan and task history entry.
 
-**Current execution boundary:** this interface does not pretend that planning is code execution. The backend's task endpoint still stores plans only; Hermes/Codex/Claude Code worker execution, isolated workspaces, terminal streaming, automatic repair, and device actions are not enabled yet. Skills remain read-only in the UI and must be hash-approved with the guarded CLI.
+**Execution boundary:** planning is always available. Eligible coding tasks can additionally be submitted to the Codex CLI worker when the `codex` executable is installed and authenticated. Each run uses a detached Git worktree and Codex `workspace-write` sandbox, has a bounded timeout, records event metadata, and retains the worktree for human review. TEDDY does not auto-merge, push, deploy, or run non-coding tasks through this worker. Hermes and Claude Code remain inventory-only until separate, tested adapters are provided. Skills remain read-only in the UI and must be hash-approved with the guarded CLI.
 
 ## Backend status
 
@@ -22,7 +22,7 @@ The initial backend is now in the repository:
 - tmux development launcher for supervising the API terminal and a shell
 - No external action execution is enabled yet
 
-This is a working **backend foundation**, not the complete assistant. It does not yet execute shell commands, send messages, control devices, use a webcam, or provide the final UI.
+This is a working **operator prototype**: the task planner, saved task lifecycle, command-centre UI, and an opt-in Codex coding worker are present. It does not send messages, control devices, use a webcam, or automatically merge agent changes.
 
 ## Run in GitHub Codespaces
 
@@ -120,6 +120,27 @@ curl http://127.0.0.1:8000/api/v1/tasks/TASK_ID
 ```
 
 When no model credentials are configured, TEDDY uses a deterministic fallback planner and explicitly reports that no external model was called.
+
+## Run a coding task with Codex
+
+Install and authenticate the official Codex CLI in the same environment that runs TEDDY. Follow the current instructions at [OpenAI Codex CLI docs](https://developers.openai.com/codex/cli/).
+
+Check that the CLI is visible to the backend process:
+
+```bash
+codex --version
+codex login
+```
+
+Create a coding task from the command centre. In Task History, open a coding task and use **Run in isolated Codex worktree**. The API also supports:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/tasks/TASK_ID/run
+```
+
+The endpoint rejects non-coding, high-risk, approval-required, duplicate, and unavailable-agent runs. It creates a detached worktree under `.teddy-worktrees/TASK_ID`, asks Codex to work within its `workspace-write` sandbox, sets a configurable timeout (`AGENT_TIMEOUT_SECONDS`, default 900 seconds), saves safe event metadata and the final agent message, and keeps the worktree for review. The original working tree is not changed by the worker, and TEDDY does not auto-merge or commit the changes. On successful agent exit, task status means the CLI process completed—not independent proof that every test passed. Verify the reported commands/results and inspect the diff before manually applying changes.
+
+This prototype is intended for one trusted local operator and has no user authentication layer. Do not expose the agent-run endpoint to untrusted users or a public network.
 
 ## Configure Nebius Token Factory later
 
