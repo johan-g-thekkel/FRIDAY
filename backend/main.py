@@ -20,7 +20,7 @@ from backend.model_router import (
     ModelProviderUnavailableForSkills,
     ModelRouteUnavailable,
 )
-from backend.skill_registry import (\n    disable_skill, enable_skill_after_review, get_skill_detail,\n    list_skill_metadata, SkillApprovalError, SkillNotApprovedError,\n)
+from backend.skill_registry import (\n    disable_skill, enable_skill_after_review, get_skill_detail,\n    list_skill_metadata, SkillReviewError, SkillNotApprovedError,\n)
 from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, SkillReviewRequest, TaskCreate, TaskResponse
 from backend.settings import get_settings
 from backend.agent_runner import agent_available, run_codex_task
