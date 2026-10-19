@@ -64,12 +64,27 @@ def is_symlink(info: zipfile.ZipInfo) -> bool:
     return (unix_mode & 0o170000) == 0o120000
 
 
-def import_archive(path: Path, seen: set[tuple[str, str]]) -> tuple[int, int]:
+def _emit(messages: list[str] | None, message: str) -> None:
+    if messages is None:
+        print(message)
+    else:
+        messages.append(message)
+
+
+def import_archive(
+    path: Path,
+    seen: set[tuple[str, str]],
+    destination: Path | None = None,
+    messages: list[str] | None = None,
+) -> tuple[int, int]:
+    """Import only approved canonical SKILL.md paths into a chosen local root."""
+    target = destination or DESTINATION
     if not path.is_file() or not zipfile.is_zipfile(path):
-        print(f"SKIP {path}: not a readable ZIP archive")
+        _emit(messages, f"SKIP {path}: not a readable ZIP archive")
         return 0, 1
 
-    imported = skipped = total_size = 0
+    target.mkdir(parents=True, exist_ok=True)
+    imported = skipped = 0
     with zipfile.ZipFile(path) as archive:
         total_uncompressed = sum(item.file_size for item in archive.infolist())
         if total_uncompressed > MAX_TOTAL_ARCHIVE_BYTES:
@@ -87,7 +102,7 @@ def import_archive(path: Path, seen: set[tuple[str, str]]) -> tuple[int, int]:
                 skipped += 1
                 continue
             if is_symlink(info) or info.file_size > MAX_SKILL_BYTES:
-                print(f"SKIP {info.filename}: symlink or SKILL.md too large")
+                _emit(messages, f"SKIP {info.filename}: symlink or SKILL.md too large")
                 skipped += 1
                 continue
             if imported >= MAX_SKILLS:
@@ -100,16 +115,16 @@ def import_archive(path: Path, seen: set[tuple[str, str]]) -> tuple[int, int]:
 
             raw = archive.read(info)
             text = raw.decode("utf-8", errors="replace")
-            output = DESTINATION / source / skill_name / "SKILL.md"
+            output = target / source / skill_name / "SKILL.md"
             output.parent.mkdir(parents=True, exist_ok=True)
             if output.exists():
-                print(f"SKIP {source}/{skill_name}: local destination already exists")
+                _emit(messages, f"SKIP {source}/{skill_name}: local destination already exists")
                 skipped += 1
                 continue
             output.write_text(text, encoding="utf-8")
             seen.add(key)
             imported += 1
-            print(f"INDEXED {source}/{skill_name}")
+            _emit(messages, f"INDEXED {source}/{skill_name}")
 
     return imported, skipped
 

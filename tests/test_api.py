@@ -503,3 +503,53 @@ def test_bot_crud_and_task_attachment(tmp_path, monkeypatch):
         deleted = client.delete(f"/api/v1/bots/{bot['id']}")
         assert deleted.status_code == 200
         assert client.get("/api/v1/bots").json() == []
+
+
+def test_skill_archive_upload_imports_only_canonical_metadata(tmp_path):
+    import io
+    import zipfile
+
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "ECC-main/skills/demo-review-loop/SKILL.md",
+            "---\nname: demo-review-loop\ndescription: Test uploaded skill.\n---\nRun focused tests.\n",
+        )
+        archive.writestr(
+            "ECC-main/skills/demo-review-loop/install.sh",
+            "#!/bin/sh\necho must-not-be-copied-or-executed\n",
+        )
+        archive.writestr(
+            "ECC-main/skills/../../outside/SKILL.md",
+            "---\nname: outside\ndescription: traversal\n---\n",
+        )
+
+    with _client_for_test(tmp_path) as client:
+        response = client.post(
+            "/api/v1/skills/import",
+            files={"file": ("ECC-main.zip", payload.getvalue(), "application/zip")},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["imported"] == 1
+        assert body["inventory_count"] == 1
+        inventory = client.get("/api/v1/skills").json()
+        assert inventory["skills"][0]["name"] == "demo-review-loop"
+        assert inventory["skills"][0]["status"] == "disabled_pending_review"
+        imported_root = tmp_path / "skills" / "ECC"
+        assert (imported_root / "demo-review-loop" / "SKILL.md").is_file()
+        assert not (imported_root / "demo-review-loop" / "install.sh").exists()
+
+
+def test_skill_archive_upload_rejects_unknown_names_and_non_zip(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        unsupported = client.post(
+            "/api/v1/skills/import",
+            files={"file": ("random.zip", b"fake-zip", "application/zip")},
+        )
+        assert unsupported.status_code == 422
+        non_zip = client.post(
+            "/api/v1/skills/import",
+            files={"file": ("ECC-main.zip", b"not really zip", "application/zip")},
+        )
+        assert non_zip.status_code == 422

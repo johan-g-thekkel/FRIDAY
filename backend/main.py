@@ -2,9 +2,12 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
+import tempfile
+import zipfile
 from uuid import uuid4
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +24,7 @@ from backend.skill_registry import list_skill_metadata, SkillNotApprovedError
 from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, TaskCreate, TaskResponse
 from backend.settings import get_settings
 from backend.agent_runner import agent_available, run_codex_task
+from scripts.import_skill_metadata import MAX_TOTAL_ARCHIVE_BYTES, import_archive
 
 
 @asynccontextmanager
@@ -227,6 +231,60 @@ async def remove_bot(bot_id: str):
     if not delete_bot(bot_id):
         raise HTTPException(status_code=404, detail="Bot not found.")
     return {"deleted": True, "id": bot_id}
+
+
+@app.post("/api/v1/skills/import", tags=["skills"])
+async def import_skill_archive(file: UploadFile = File(...)):
+    """Import reviewed-source SKILL.md metadata from supported archives; never run archive contents."""
+    allowed_names = {"ECC-main.zip", "Desktop2222.zip", "teddy-skill-candidates.zip"}
+    filename = Path((file.filename or "").replace("\\", "/")).name
+    if filename not in allowed_names:
+        await file.close()
+        raise HTTPException(
+            status_code=422,
+            detail="Unsupported archive name. Supported names: ECC-main.zip, Desktop2222.zip, teddy-skill-candidates.zip.",
+        )
+
+    skills_root = Path(get_settings().skills_root).expanduser()
+    imported_count = skipped_count = uploaded_bytes = 0
+    messages: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory(prefix="teddy-skill-upload-") as temp_dir:
+            archive_path = Path(temp_dir) / filename
+            with archive_path.open("wb") as output:
+                while True:
+                    chunk = await file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    uploaded_bytes += len(chunk)
+                    if uploaded_bytes > MAX_TOTAL_ARCHIVE_BYTES:
+                        raise HTTPException(status_code=413, detail="ZIP upload exceeds the 260 MiB upload limit.")
+                    output.write(chunk)
+
+            if not zipfile.is_zipfile(archive_path):
+                raise HTTPException(status_code=422, detail="The uploaded file is not a valid ZIP archive.")
+
+            try:
+                imported_count, skipped_count = import_archive(
+                    archive_path,
+                    set(),
+                    destination=skills_root,
+                    messages=messages,
+                )
+            except (OSError, ValueError, zipfile.BadZipFile) as exc:
+                raise HTTPException(status_code=422, detail=f"Skill import stopped safely: {str(exc)[:500]}") from exc
+    finally:
+        await file.close()
+
+    inventory = list_skill_metadata()
+    return {
+        "uploaded_filename": filename,
+        "imported": imported_count,
+        "skipped": skipped_count,
+        "inventory_count": inventory["count"],
+        "messages": messages[:80],
+        "note": "Only canonical SKILL.md metadata was copied. Uploaded scripts and binaries were not executed or installed; all new skills remain disabled until locally reviewed.",
+    }
 
 
 @app.get("/api/v1/skills", tags=["skills"])
