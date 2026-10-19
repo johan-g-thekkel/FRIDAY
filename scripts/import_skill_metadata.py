@@ -21,6 +21,10 @@ MAX_SKILLS = 500
 
 # Canonical portable locations; avoid duplicate agent adapters and localized docs.
 RULES = (
+    ("teddy-skill-candidates.zip", ("TEDDY_SKILLS", "ECC"), "ECC"),
+    ("teddy-skill-candidates.zip", ("TEDDY_SKILLS", "Astra"), "Astra"),
+    ("teddy-skill-candidates.zip", ("TEDDY_SKILLS", "GLM-V"), "GLM-V"),
+    ("teddy-skill-candidates.zip", ("TEDDY_SKILLS", "REA"), "REA"),
     ("ECC-main.zip", ("ECC-main", "skills"), "ECC"),
     ("Desktop2222.zip", ("Desktop2222", "GLM-V-main", "skills"), "GLM-V"),
     ("Desktop2222.zip", ("Desktop2222", "Astra-main", ".agent", "skills"), "Astra"),
