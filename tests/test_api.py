@@ -616,3 +616,11 @@ def test_ui_can_disable_a_reviewed_skill(tmp_path):
         assert response.status_code == 200
         assert response.json()["status"] == "disabled_pending_review"
         assert client.get("/api/v1/skills").json()["skills"][0]["status"] == "disabled_pending_review"
+
+def test_plan_only_tasks_cannot_access_agent_changes_endpoint(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        created = client.post("/api/v1/tasks", json={"prompt": "Help me debug my Python API"})
+        response = client.get(f"/api/v1/tasks/{created.json()['id']}/changes")
+        assert response.status_code == 409
+        assert "no agent worktree" in response.json()["detail"].lower()
+

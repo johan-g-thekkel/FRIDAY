@@ -1,4 +1,5 @@
 import json
+import os
 
 from backend.agent_runner import _restricted_child_environment, _safe_event_summary
 
@@ -77,9 +78,3 @@ def test_worktree_inspection_reports_tracked_and_untracked_changes(tmp_path, mon
     assert changes["truncated"] is False
 
 
-def test_plan_only_tasks_cannot_access_agent_changes_endpoint(tmp_path):
-    with _client_for_test(tmp_path) as client:
-        created = client.post("/api/v1/tasks", json={"prompt": "Help me debug my Python API"})
-        response = client.get(f"/api/v1/tasks/{created.json()['id']}/changes")
-        assert response.status_code == 409
-        assert "no agent worktree" in response.json()["detail"].lower()
