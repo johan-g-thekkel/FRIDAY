@@ -36,6 +36,7 @@ TEDDY is a model- and agent-extensible personal AI operator. It must not be hard
 | Nebius Token Factory | Model API | OpenAI-compatible provider adapter; use exact model ID from the user's account | Optional; not connected until configured |
 | NVIDIA Nemotron | Model family | Use an available model ID through Nebius Token Factory or the separate NVIDIA NIM adapter | Not connected until configured |
 | NVIDIA NIM | Model API | OpenAI-compatible endpoint at the configured NIM base URL and exact account-supported model ID | Optional route implemented; API key/model ID pending |
+| Named OpenAI-compatible profiles | Model API | Add profiles in local gitignored `data/model-profiles.json`, resolve keys via environment variable names, route by profile ID | Dynamic profile adapter implemented; actual endpoints and keys still need setup |
 | Claude Fable 5.1 | Hosted reasoning model | Anthropic API adapter; use only for selected complex tasks with input/output caps and an approximate cost guard | Implemented as opt-in planning route; disabled until configured |
 | Nex-N2.5 | Agentic model family | Integrate through a verified hosted endpoint or compatible runtime; pin the exact variant and ID | Adapter pending; no weights/source archive received |
 | Needle 3 | Compact structured tool-call model | Use the official package/runner and schema-limited tool proposals, with telemetry disabled and policy validation | Source reviewed; weights/engine and runtime installation remain pending |
