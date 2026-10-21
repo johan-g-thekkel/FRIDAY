@@ -109,6 +109,14 @@ def list_integrations() -> list[dict[str, Any]]:
             "details": "Needle source was reviewed separately; install the package and obtain matching model weights/engine before use.",
         },
         {
+            "id": "opencode",
+            "name": "OpenCode",
+            "kind": "coding_agent",
+            "status": _cli_status("opencode"),
+            "purpose": "Optional coding-agent CLI with local Ollama model support",
+            "details": "Install OpenCode separately and configure it with the example Ollama config. CLI detection is not a proof of authentication, tool readiness, or a successful coding run.",
+        },
+        {
             "id": "hermes_agent",
             "name": "Hermes Agent",
             "kind": "agent_runtime",
