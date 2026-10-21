@@ -35,6 +35,14 @@ def list_integrations() -> list[dict[str, Any]]:
 
     integrations = [
         {
+            "id": "ollama_local",
+            "name": "Ollama Local Runtime",
+            "kind": "local_model_runtime",
+            "status": "cli_detected_needs_api_health_check" if shutil.which("ollama") else "api_adapter_available_runtime_not_detected",
+            "purpose": "Private local model inference without automatic cloud fallback",
+            "details": "Use /api/v1/local-ai/status for the live API/model check. Install Ollama and pull a model; downloaded models can run offline. This runtime does not itself execute coding-agent tools.",
+        },
+        {
             "id": "local_fallback",
             "name": "TEDDY Local Planner",
             "kind": "model",
