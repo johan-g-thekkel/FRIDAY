@@ -22,68 +22,30 @@ async def chat_completion(messages: list[dict[str, str]], requested_route: str =
     route = requested_route or "auto"
 
     if route == "auto":
-        if settings.nebius_ready:
-            provider, base_url, api_key, model = (
-                "nebius-token-factory", settings.nebius_base_url,
-                settings.nebius_api_key, settings.nebius_model,
-            )
-        elif settings.nvidia_ready:
-            provider, base_url, api_key, model = (
-                "nvidia-nim", settings.nvidia_base_url,
-                settings.nvidia_api_key, settings.nvidia_model,
-            )
-        elif available_profiles:
-            selected = available_profiles[0]
-            provider, base_url, api_key, model = (
-                "profile:" + selected["id"], selected["base_url"],
-                selected["_api_key"], selected["model"],
-            )
-        elif settings.openai_compatible_ready:
-            provider, base_url, api_key, model = (
-                "openai-compatible", settings.openai_compatible_base_url,
-                settings.openai_compatible_api_key, settings.openai_compatible_model,
-            )
-        else:
+        # FRIDAY chat defaults to configured named profiles (for example a Chinese
+        # provider or a local Ollama-compatible endpoint), not paid premium routes.
+        if not available_profiles:
             raise ChatRouteUnavailable(
-                "No live AI provider is configured. Add a provider key and model in your local .env, "
-                "or configure an OpenAI-compatible Chinese model profile in data/model-profiles.json. "
-                "Local fallback planning is not a generative chat model."
+                "No named chat profile is configured. Copy data/model-profiles.example.json "
+                "to data/model-profiles.json, add a valid provider key in .env, and confirm "
+                "the provider currently offers the selected model/free quota."
             )
-    elif route == "nebius":
-        if not settings.nebius_ready:
-            raise ChatRouteUnavailable("Nebius is not configured: set NEBIUS_API_KEY and NEBIUS_MODEL.")
-        provider, base_url, api_key, model = (
-            "nebius-token-factory", settings.nebius_base_url,
-            settings.nebius_api_key, settings.nebius_model,
-        )
-    elif route == "nvidia_nim":
-        if not settings.nvidia_ready:
-            raise ChatRouteUnavailable("NVIDIA NIM is not configured: set NVIDIA_API_KEY and NVIDIA_MODEL.")
-        provider, base_url, api_key, model = (
-            "nvidia-nim", settings.nvidia_base_url, settings.nvidia_api_key, settings.nvidia_model,
-        )
-    elif route == "openai_compatible":
-        if not settings.openai_compatible_ready:
-            raise ChatRouteUnavailable(
-                "Custom endpoint is not configured: set OPENAI_COMPATIBLE_API_KEY, "
-                "OPENAI_COMPATIBLE_BASE_URL and OPENAI_COMPATIBLE_MODEL."
-            )
-        provider, base_url, api_key, model = (
-            "openai-compatible", settings.openai_compatible_base_url,
-            settings.openai_compatible_api_key, settings.openai_compatible_model,
-        )
+        selected = available_profiles[0]
     else:
         selected = next((p for p in profiles if p["id"] == route), None)
         if selected is None:
-            raise ChatRouteUnavailable(f"Unknown model route '{route}'. Refresh the model list.")
+            raise ChatRouteUnavailable(
+                "FRIDAY central chat only uses named OpenAI-compatible profiles. "
+                "Configure a Chinese provider profile or a local model profile."
+            )
         if not selected["available"]:
             raise ChatRouteUnavailable(
                 f"{selected['name']} is not configured. Set the {selected['api_key_env']} environment variable."
             )
-        provider, base_url, api_key, model = (
-            "profile:" + selected["id"], selected["base_url"],
-            selected["_api_key"], selected["model"],
-        )
+    provider, base_url, api_key, model = (
+        "profile:" + selected["id"], selected["base_url"],
+        selected["_api_key"], selected["model"],
+    )
 
     client = AsyncOpenAI(
         base_url=base_url.rstrip("/"),
