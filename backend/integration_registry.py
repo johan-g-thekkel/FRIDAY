@@ -222,6 +222,74 @@ def list_integrations() -> list[dict[str, Any]]:
             "details": "ECC has 292 core skill definitions plus 9 Astra, 10 GLM-V and 5 REA skill candidates. Place reviewed folders under SKILLS_ROOT for metadata discovery; skills stay disabled and their scripts are never run by the inventory API.",
         },
     ]
+    # Community-built tools are listed with truthful local readiness states.
+    # A CLI being installed is not proof of authentication or a successful run.
+    integrations.extend([
+        {
+            "id": "ollama",
+            "name": "Ollama Local Runtime",
+            "kind": "local_model_runtime",
+            "status": _cli_status("ollama"),
+            "purpose": "Run installed local models such as Llama and Qwen",
+            "details": "Install Ollama and pull a model separately. FRIDAY must probe the local API and list installed tags before marking any model usable; this inventory does not download models.",
+        },
+        {
+            "id": "opencode",
+            "name": "OpenCode",
+            "kind": "coding_agent",
+            "status": _cli_status("opencode"),
+            "purpose": "Open-source coding agent with configurable model providers",
+            "details": "Requires CLI setup and provider authentication. Execute only in an isolated worktree with timeouts; installed status is not a smoke test.",
+        },
+        {
+            "id": "nemoclaw",
+            "name": "NVIDIA NemoClaw",
+            "kind": "agent_sandbox",
+            "status": _cli_status("nemoclaw"),
+            "purpose": "Optional sandbox/policy layer for supported agent workflows",
+            "details": "Not a language model. Verify supported host prerequisites and sandbox policy before enabling workers.",
+        },
+        {
+            "id": "cursor",
+            "name": "Cursor Editor Handoff",
+            "kind": "external_editor",
+            "status": _cli_status("cursor"),
+            "purpose": "Open the current workspace in Cursor when its CLI is installed",
+            "details": "FRIDAY does not claim GUI control. This entry only detects the optional CLI; otherwise use the workspace link or manual editor handoff.",
+        },
+        {
+            "id": "bolt",
+            "name": "Bolt",
+            "kind": "external_app_builder",
+            "status": "external_workflow_not_connected",
+            "purpose": "Import application source created through supported Bolt export/Git workflows",
+            "details": "No private API or account session is assumed. Export/import source into a review branch, inspect dependencies and run tests before adoption.",
+        },
+        {
+            "id": "lovable",
+            "name": "Lovable",
+            "kind": "external_app_builder",
+            "status": "external_workflow_not_connected",
+            "purpose": "Import supported Lovable-generated application source",
+            "details": "Use the supported GitHub integration/export flow. FRIDAY cannot claim control of the remote UI without a separately configured authorized connector.",
+        },
+        {
+            "id": "gesture_solar_system_reference",
+            "name": "Community Gesture Solar System",
+            "kind": "open_source_reference",
+            "status": "reference_documented",
+            "purpose": "Reference for gesture-controlled planetary visualization",
+            "details": "Upstream: https://github.com/mrgehlot/hand_gesture_solar_system and https://github.com/Sheharyar2000/hand-gesture-universe. FRIDAY currently has its own browser implementation; no source from these repositories is represented as copied.",
+        },
+        {
+            "id": "ecc_skills_upstream",
+            "name": "Everything Claude Code (ECC) Skills",
+            "kind": "skills_catalog",
+            "status": "import_review_required",
+            "purpose": "Import reusable community skill definitions after license and content review",
+            "details": "Upstream: https://github.com/affaan-m/ECC. Download/archive and review SKILL.md content before importing through FRIDAY's existing quarantine workflow; do not execute scripts automatically.",
+        },
+    ]);
     integrations.extend(
         {
             "id": "model-profile-" + profile["id"],
