@@ -35,6 +35,14 @@ def list_integrations() -> list[dict[str, Any]]:
 
     integrations = [
         {
+            "id": "ollama_local",
+            "name": "Ollama Local Runtime",
+            "kind": "local_model_runtime",
+            "status": "cli_detected_needs_api_health_check" if shutil.which("ollama") else "api_adapter_available_runtime_not_detected",
+            "purpose": "Private local model inference without automatic cloud fallback",
+            "details": "Use /api/v1/local-ai/status for the live API/model check. Install Ollama and pull a model; downloaded models can run offline. This runtime does not itself execute coding-agent tools.",
+        },
+        {
             "id": "local_fallback",
             "name": "TEDDY Local Planner",
             "kind": "model",
@@ -99,6 +107,14 @@ def list_integrations() -> list[dict[str, Any]]:
             ),
             "purpose": "Small structured tool selection, extraction, and local routing",
             "details": "Needle source was reviewed separately; install the package and obtain matching model weights/engine before use.",
+        },
+        {
+            "id": "opencode",
+            "name": "OpenCode",
+            "kind": "coding_agent",
+            "status": _cli_status("opencode"),
+            "purpose": "Optional coding-agent CLI with local Ollama model support",
+            "details": "Install OpenCode separately and configure it with the example Ollama config. CLI detection is not a proof of authentication, tool readiness, or a successful coding run.",
         },
         {
             "id": "hermes_agent",
