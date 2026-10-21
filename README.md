@@ -255,3 +255,16 @@ GET `/api/v1/policy` returns TEDDY's inspectable autonomy contract: supervised, 
 ## Spatial / gesture interface
 
 Open **Spatial / Gesture UI** from the command-centre sidebar, or visit `/static/vision.html`. This adds an experimental Three.js solar-system HUD with optional browser-side MediaPipe hand tracking. Camera access is off until the user explicitly enables it; Stop ends the media tracks. Open palm pans, pinch zooms, fist pauses orbit, and pointing selects a body. Mouse, keyboard and on-screen controls work without a camera. See [`docs/FRIDAY_SPATIAL_GESTURE_UI.md`](docs/FRIDAY_SPATIAL_GESTURE_UI.md) for privacy, setup, upstream references and manual smoke tests. The page uses CDN-loaded Three.js/MediaPipe resources and requires localhost or HTTPS for camera access. This is a visual prototype; it is not wired to destructive OS/device actions.
+
+## Local-first AI workspace
+
+Open **Local AI Workspace** in the sidebar, or visit `/static/local-ai.html`. It talks to the Ollama service at `http://127.0.0.1:11434` through FRIDAY's local-only API. It lists installed models, sends chat to the selected local model, and deliberately does not fall back to cloud providers if local inference fails.
+
+Install Ollama from https://ollama.com/download, then run one of the setup scripts:
+
+- Windows PowerShell: `./scripts/setup-local-ai.ps1`
+- Linux/macOS/Codespaces: `bash scripts/setup-local-ai.sh`
+
+The starter model is `qwen2.5:3b`. The initial model download requires internet and disk space; after the model is downloaded, local inference can run offline as long as Ollama and the model remain installed. Hardware and memory requirements vary. Start FRIDAY with `python -m pip install -r requirements.txt` and `python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`, then open http://127.0.0.1:8000/static/local-ai.html.
+
+API endpoints: `GET /api/v1/local-ai/status` and `POST /api/v1/local-ai/chat`. The local chat does not run shell commands or edit files. Ollama is a model runtime, not a coding agent. Optional coding agents such as OpenCode and Hermes must be installed/configured separately; `opencode.ollama.example.json` shows an example OpenCode provider configuration. See [Local-first AI documentation](docs/FRIDAY_LOCAL_FIRST_AI.md) for security boundaries, agent references, offline limitations and validation steps.
