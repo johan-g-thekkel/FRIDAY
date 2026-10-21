@@ -251,3 +251,7 @@ TEDDY's original code is distributed under the MIT License. Third-party reposito
 ## Autonomy policy endpoint
 
 GET `/api/v1/policy` returns TEDDY's inspectable autonomy contract: supervised, builder, researcher, and trusted-automation profiles; dynamic specialist-team coordination; and non-negotiable safety boundaries. When agents disagree, TEDDY's chosen policy is **competitive execution**: where safe and practical, compare isolated implementations using tests and benchmarks rather than deciding by majority vote. The endpoint describes policy and implementation status; it does not claim every adapter is installed. Hermes Agent and Claude Code remain pending tested adapters; device control, webcam emotion inference, automatic merging, and deployment are not enabled.
+
+## Spatial / gesture interface
+
+Open **Spatial / Gesture UI** from the command-centre sidebar, or visit `/static/vision.html`. This adds an experimental Three.js solar-system HUD with optional browser-side MediaPipe hand tracking. Camera access is off until the user explicitly enables it; Stop ends the media tracks. Open palm pans, pinch zooms, fist pauses orbit, and pointing selects a body. Mouse, keyboard and on-screen controls work without a camera. See [`docs/FRIDAY_SPATIAL_GESTURE_UI.md`](docs/FRIDAY_SPATIAL_GESTURE_UI.md) for privacy, setup, upstream references and manual smoke tests. The page uses CDN-loaded Three.js/MediaPipe resources and requires localhost or HTTPS for camera access. This is a visual prototype; it is not wired to destructive OS/device actions.
