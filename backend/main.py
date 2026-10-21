@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import claim_task_for_agent, create_bot, delete_bot, fail_interrupted_agent_tasks, get_bot, get_task, init_db, insert_task, list_bots, list_tasks, update_bot, update_task, utc_now
 from backend.integration_registry import list_integrations
+from backend.autonomy_policy import public_autonomy_policy
 from backend.model_profiles import public_model_profiles
 from backend.model_router import (
     create_plan,
@@ -174,6 +175,12 @@ async def model_routes():
         ] + public_model_profiles(),
         "note": "NVIDIA NIM supports configured compatible chat models (including Nemotron where available). Additional OpenAI-compatible models can be added in data/model-profiles.json. A supervised Codex CLI worker is available for eligible coding tasks when installed; Hermes and Claude Code remain inventory-only pending separate adapters.",
     }
+
+
+@app.get("/api/v1/policy", tags=["system"])
+async def autonomy_policy():
+    """Return TEDDY autonomy profiles and non-negotiable safeguards."""
+    return public_autonomy_policy()
 
 
 @app.get("/api/v1/integrations", tags=["system"])

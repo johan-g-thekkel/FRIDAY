@@ -246,3 +246,8 @@ pytest -q
 ## License
 
 TEDDY's original code is distributed under the MIT License. Third-party repositories, libraries, and models retain their own licenses and terms.
+
+
+## Autonomy policy endpoint
+
+GET `/api/v1/policy` returns TEDDY's inspectable autonomy contract: supervised, builder, researcher, and trusted-automation profiles; dynamic specialist-team coordination; and non-negotiable safety boundaries. When agents disagree, TEDDY's chosen policy is **competitive execution**: where safe and practical, compare isolated implementations using tests and benchmarks rather than deciding by majority vote. The endpoint describes policy and implementation status; it does not claim every adapter is installed. Hermes Agent and Claude Code remain pending tested adapters; device control, webcam emotion inference, automatic merging, and deployment are not enabled.
