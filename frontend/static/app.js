@@ -727,19 +727,19 @@
     const select = $("#friday-model-route");
     if (!select) return;
     const current = select.value || "auto";
-    const routes = (state.models.routes || []).filter(function (route) {
-      return route.id === "auto" || route.available;
-    });
+    const routes = [{ id: "auto", name: "Configured Chinese/local profile", available: true }].concat((state.models.routes || []).filter(function (route) {
+      return route.id !== "auto" && route.available && route.provider === "openai-compatible-profile";
+    }));
     select.innerHTML = routes.map(function (route) {
       return '<option value="' + escapeHtml(route.id) + '">' +
         escapeHtml(route.name + (route.id === "auto" ? " — recommended" : "")) + '</option>';
     }).join("");
     select.value = routes.some(function (route) { return route.id === current; }) ? current : "auto";
     const realRoutes = routes.filter(function (route) { return route.id !== "auto"; });
-    $("#friday-provider-state").textContent = realRoutes.length ? realRoutes.length + " live route(s) configured" : "No live model configured";
+    $("#friday-provider-state").textContent = realRoutes.length ? realRoutes.length + " live route(s) configured" : "No Chinese/local profile configured";
     $("#friday-chat-status").textContent = realRoutes.length
       ? "Ready to call a configured provider. Replies come from the selected model."
-      : "Chat needs a real model provider. Configure a key locally; FRIDAY will not fake a reply.";
+      : "Configure a Chinese API profile or local model endpoint. FRIDAY will not fake a reply.";
   }
   function renderFridayMessages() {
     const root = $("#friday-chat-messages");
