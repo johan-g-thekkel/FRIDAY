@@ -624,3 +624,19 @@ def test_plan_only_tasks_cannot_access_agent_changes_endpoint(tmp_path):
         assert response.status_code == 409
         assert "no agent worktree" in response.json()["detail"].lower()
 
+
+
+
+def test_autonomy_policy_endpoint_exposes_profiles_and_safeguards(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api/v1/policy")
+        assert response.status_code == 200
+        policy = response.json()
+        assert policy["coordination"]["mode"] == "dynamic_specialist_teams"
+        assert policy["coordination"]["disagreement_resolution"] == "competitive_execution"
+        assert {item["id"] for item in policy["profiles"]} == {
+            "supervised", "builder", "researcher", "trusted_automation"
+        }
+        assert policy["safeguards"]["high_risk_actions_require_approval"] is True
+        assert policy["safeguards"]["untrusted_skills_execute_automatically"] is False
+        assert policy["implementation_status"]["hermes_agent"] == "inventory_only_pending_tested_adapter"
