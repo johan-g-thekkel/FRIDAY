@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import json
+import os
+from urllib.request import urlopen
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +20,23 @@ from backend.model_profiles import load_model_profiles
 
 def _cli_status(command: str) -> str:
     return "installed_needs_verification" if shutil.which(command) else "not_installed"
+
+
+def _ollama_runtime_status() -> tuple[str, str]:
+    """Probe Ollama tags without exposing prompts or credentials."""
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+    try:
+        with urlopen(base_url + "/api/tags", timeout=1.5) as response:
+            if response.status != 200:
+                return "unreachable", "Ollama server returned a non-200 status."
+            payload = json.loads(response.read(1_000_000).decode("utf-8"))
+        models = payload.get("models", [])
+        names = [item.get("name") for item in models if isinstance(item, dict) and item.get("name")]
+        if names:
+            return "reachable_models_detected", "Ollama is reachable. Installed model tags: " + ", ".join(names[:20])
+        return "reachable_no_models", "Ollama is reachable but reports no downloaded models. Pull a model before selecting this route."
+    except Exception as exc:
+        return ("not_running" if shutil.which("ollama") else "not_installed"), "Could not query " + base_url + "/api/tags; error type: " + type(exc).__name__
 
 
 def _package_available(package: str) -> bool:
@@ -38,9 +58,9 @@ def list_integrations() -> list[dict[str, Any]]:
             "id": "ollama",
             "name": "Ollama Local Runtime",
             "kind": "model_runtime",
-            "status": _cli_status("ollama"),
+            "status": _ollama_runtime_status()[0],
             "purpose": "Serve local Llama, Qwen, and other Ollama-compatible models",
-            "details": "CLI presence is not proof the server is reachable or any model is downloaded. Probe the configured Ollama API and enumerate installed model tags before enabling a route.",
+            "details": _ollama_runtime_status()[1],
         },
         {
             "id": "kimi",
