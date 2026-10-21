@@ -255,3 +255,7 @@ GET `/api/v1/policy` returns TEDDY's inspectable autonomy contract: supervised, 
 ## Spatial / gesture interface
 
 Open **Spatial / Gesture UI** from the command-centre sidebar, or visit `/static/vision.html`. This adds an experimental Three.js solar-system HUD with optional browser-side MediaPipe hand tracking. Camera access is off until the user explicitly enables it; Stop ends the media tracks. Open palm pans, pinch zooms, fist pauses orbit, and pointing selects a body. Mouse, keyboard and on-screen controls work without a camera. See [`docs/FRIDAY_SPATIAL_GESTURE_UI.md`](docs/FRIDAY_SPATIAL_GESTURE_UI.md) for privacy, setup, upstream references and manual smoke tests. The page uses CDN-loaded Three.js/MediaPipe resources and requires localhost or HTTPS for camera access. This is a visual prototype; it is not wired to destructive OS/device actions.
+
+## Community components and agent integrations
+
+See [`docs/COMMUNITY_COMPONENTS.md`](docs/COMMUNITY_COMPONENTS.md) for the upstream repositories, license notes, intended roles, and verified integration boundaries. The Agents & Integrations inventory now includes readiness entries for Ollama, OpenCode, NemoClaw, Cursor, Bolt, Lovable, ECC, and community gesture demos. These statuses distinguish local CLI detection from actual provider authentication and end-to-end tests; external app builders are documented handoff/import workflows, not falsely advertised as connected APIs.
