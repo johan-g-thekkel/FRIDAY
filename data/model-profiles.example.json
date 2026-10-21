@@ -1,0 +1,22 @@
+[
+  {
+    "id": "siliconflow-qwen",
+    "name": "SiliconFlow · Qwen (Chinese provider)",
+    "enabled": true,
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "Qwen/Qwen3-8B",
+    "api_key_env": "SILICONFLOW_API_KEY",
+    "priority": 10,
+    "capabilities": ["text", "reasoning", "coding", "tool-calling"]
+  },
+  {
+    "id": "siliconflow-deepseek",
+    "name": "SiliconFlow · DeepSeek model (availability depends on account)",
+    "enabled": false,
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "deepseek-ai/DeepSeek-R1",
+    "api_key_env": "SILICONFLOW_API_KEY",
+    "priority": 20,
+    "capabilities": ["text", "reasoning", "coding"]
+  }
+]
