@@ -12,6 +12,8 @@
     tasks: [],
     selectedTaskId: null,
     taskChanges: null,
+    chatMessages: [],
+    chatBusy: false,
     toastTimer: null,
     refreshTimer: null
   };
@@ -202,7 +204,7 @@
       workerSection = canRun
         ? (codexReady
             ? '<button class="primary-button run-agent-button" id="run-codex-task" data-task-id="' + escapeHtml(task.id) + '"><span>Run in isolated Codex worktree</span><span class="button-arrow">↗</span></button><p class="worker-explainer">Runs in a separate Git worktree with Codex workspace-write sandbox. Changes are not merged automatically.</p>'
-            : '<div class="detail-notice">Codex CLI is not detected in TEDDY’s environment. In the Codespace terminal, run:<pre>npm install -g @openai/codex@latest\ncodex login</pre>Then restart TEDDY and refresh status. <a href="https://developers.openai.com/codex/cli/" target="_blank" rel="noreferrer">Official CLI guide ↗</a></div>')
+            : '<div class="detail-notice">Codex CLI is not detected in FRIDAY’s environment. In the Codespace terminal, run:<pre>npm install -g @openai/codex@latest\ncodex login</pre>Then restart FRIDAY and refresh status. <a href="https://developers.openai.com/codex/cli/" target="_blank" rel="noreferrer">Official CLI guide ↗</a></div>')
         : '<div class="detail-notice">This coding task is blocked from automatic execution by its risk or approval flags.</div>';
     } else if (task.status === "running") {
       workerSection = '<div class="worker-status"><span class="activity-live-dot"></span><strong>Agent running</strong><span>Refreshing status automatically</span></div>';
@@ -221,7 +223,7 @@
     target.innerHTML = '<div class="detail-kicker">TASK / ' + escapeHtml(String(task.id).slice(0, 8).toUpperCase()) + '</div>' +
       '<div class="detail-prompt">' + escapeHtml(taskTitle(task)) + '</div>' +
       '<div class="task-row-meta"><span class="mini-status">' + escapeHtml(task.status || "planned") + '</span><span>Created ' + escapeHtml(fullDate(task.created_at)) + '</span></div>' +
-      '<div class="detail-meta-grid"><div class="detail-meta"><label>MODEL PROVIDER</label><strong>' + escapeHtml(task.provider || "unknown") + '</strong></div><div class="detail-meta"><label>MODEL</label><strong>' + escapeHtml(task.model || "Deterministic fallback") + '</strong></div><div class="detail-meta"><label>CATEGORY</label><strong>' + escapeHtml(readable(task.category)) + '</strong></div><div class="detail-meta"><label>RISK LEVEL</label><strong>' + escapeHtml(readable(task.risk)) + '</strong></div><div class="detail-meta"><label>BOT PROFILE</label><strong>' + escapeHtml(task.bot_name || "TEDDY default") + '</strong></div><div class="detail-meta"><label>AGENT RUNTIME</label><strong>' + escapeHtml(task.agent_name || "Not started") + '</strong></div></div>' +
+      '<div class="detail-meta-grid"><div class="detail-meta"><label>MODEL PROVIDER</label><strong>' + escapeHtml(task.provider || "unknown") + '</strong></div><div class="detail-meta"><label>MODEL</label><strong>' + escapeHtml(task.model || "Deterministic fallback") + '</strong></div><div class="detail-meta"><label>CATEGORY</label><strong>' + escapeHtml(readable(task.category)) + '</strong></div><div class="detail-meta"><label>RISK LEVEL</label><strong>' + escapeHtml(readable(task.risk)) + '</strong></div><div class="detail-meta"><label>BOT PROFILE</label><strong>' + escapeHtml(task.bot_name || "FRIDAY default") + '</strong></div><div class="detail-meta"><label>AGENT RUNTIME</label><strong>' + escapeHtml(task.agent_name || "Not started") + '</strong></div></div>' +
       '<div class="detail-plan-title">GENERATED PLAN · ' + plan.length + ' STEPS</div>' +
       '<ol class="plan-list">' + plan.map(function (step) { return '<li>' + escapeHtml(step) + '</li>'; }).join("") + '</ol>' +
       workerSection +
@@ -409,7 +411,7 @@
     if (!select) return;
     const current = select.value;
     const enabled = state.bots.filter(function (bot) { return bot.enabled; });
-    select.innerHTML = '<option value="">TEDDY default</option>' + enabled.map(function (bot) {
+    select.innerHTML = '<option value="">FRIDAY default</option>' + enabled.map(function (bot) {
       return '<option value="' + escapeHtml(bot.id) + '">' + escapeHtml(bot.name) + '</option>';
     }).join("");
     select.value = enabled.some(function (bot) { return bot.id === current; }) ? current : "";
@@ -434,7 +436,7 @@
     $("#nav-bot-count").textContent = String(state.bots.length);
     const root = $("#bot-list");
     if (!state.bots.length) {
-      root.innerHTML = '<div class="empty-state"><div class="empty-glyph">⌬</div><strong>No Bots created yet</strong><p>Create a profile to give TEDDY a reusable role and context.</p></div>';
+      root.innerHTML = '<div class="empty-state"><div class="empty-glyph">⌬</div><strong>No Bots created yet</strong><p>Create a profile to give FRIDAY a reusable role and context.</p></div>';
       return;
     }
     root.innerHTML = state.bots.map(function (bot) {
@@ -569,7 +571,7 @@
     formData.append("file", file, file.name);
     button.disabled = true;
     button.innerHTML = '<span>Checking archive…</span>';
-    showSkillImportFeedback("Uploading archive. TEDDY will inspect canonical SKILL.md paths only.", false);
+    showSkillImportFeedback("Uploading archive. FRIDAY will inspect canonical SKILL.md paths only.", false);
     try {
       const result = await api("/api/v1/skills/import", {
         method: "POST",
@@ -622,6 +624,7 @@
       renderSidebarStatus(true);
       renderExecutionStatus();
       renderModelOptions();
+      renderFridayRoutes();
       renderComposerSkills();
       renderStats();
       renderRecentTasks();
@@ -636,7 +639,7 @@
       return true;
     } catch (error) {
       renderSidebarStatus(false);
-      if (showErrors) toast("Could not load TEDDY data: " + error.message, true);
+      if (showErrors) toast("Could not load FRIDAY data: " + error.message, true);
       return false;
     }
   }
@@ -652,7 +655,7 @@
     const original = button.innerHTML;
     button.disabled = true;
     button.innerHTML = '<span>Planning task…</span><span class="button-arrow">◌</span>';
-    showFormFeedback("Sending your task to the TEDDY backend…", false);
+    showFormFeedback("Sending your task to the FRIDAY backend…", false);
     try {
       const task = await api("/api/v1/tasks", {
         method: "POST",
@@ -719,7 +722,96 @@
     element.textContent = message;
     element.classList.toggle("error", !!isError);
   }
-  function bindEvents() {
+
+  function renderFridayRoutes() {
+    const select = $("#friday-model-route");
+    if (!select) return;
+    const current = select.value || "auto";
+    const routes = (state.models.routes || []).filter(function (route) {
+      return route.id === "auto" || route.available;
+    });
+    select.innerHTML = routes.map(function (route) {
+      return '<option value="' + escapeHtml(route.id) + '">' +
+        escapeHtml(route.name + (route.id === "auto" ? " — recommended" : "")) + '</option>';
+    }).join("");
+    select.value = routes.some(function (route) { return route.id === current; }) ? current : "auto";
+    const realRoutes = routes.filter(function (route) { return route.id !== "auto"; });
+    $("#friday-provider-state").textContent = realRoutes.length ? realRoutes.length + " live route(s) configured" : "No live model configured";
+    $("#friday-chat-status").textContent = realRoutes.length
+      ? "Ready to call a configured provider. Replies come from the selected model."
+      : "Chat needs a real model provider. Configure a key locally; FRIDAY will not fake a reply.";
+  }
+  function renderFridayMessages() {
+    const root = $("#friday-chat-messages");
+    if (!state.chatMessages.length) {
+      root.innerHTML = '<div class="friday-welcome"><div class="friday-welcome-symbol">✳</div><h3>What should we solve?</h3><p>Ask for coding help, architecture, research synthesis, debugging, or planning. FRIDAY will use the selected live model and report provider errors honestly.</p><div class="friday-suggestions"><button type="button" data-friday-prompt="Design a robust local-first AI agent architecture for FRIDAY, with bounded retries and test verification.">Design agent architecture</button><button type="button" data-friday-prompt="Help me debug my Python project. Ask for the necessary files and propose a testable fix.">Debug a project</button><button type="button" data-friday-prompt="Create a multi-source research plan and separate verified facts from assumptions.">Plan research</button></div></div>';
+      return;
+    }
+    root.replaceChildren();
+    state.chatMessages.forEach(function (message) {
+      const row = document.createElement("article");
+      row.className = "friday-message " + (message.role === "user" ? "user" : "assistant");
+      const label = document.createElement("div");
+      label.className = "friday-message-label";
+      label.textContent = message.role === "user" ? "YOU" : "FRIDAY" + (message.provider ? " · " + message.provider + (message.model ? " / " + message.model : "") : "");
+      const body = document.createElement("div");
+      body.className = "friday-message-body";
+      body.textContent = message.content;
+      row.append(label, body);
+      root.appendChild(row);
+    });
+    root.scrollTop = root.scrollHeight;
+  }
+  function openFridayChat() {
+    $("#friday-chat-modal").hidden = false;
+    document.body.classList.add("modal-open");
+    renderFridayRoutes();
+    $("#friday-chat-input").focus();
+  }
+  function closeFridayChat() {
+    $("#friday-chat-modal").hidden = true;
+    document.body.classList.remove("modal-open");
+  }
+  async function sendFridayMessage(event) {
+    event.preventDefault();
+    if (state.chatBusy) return;
+    const input = $("#friday-chat-input");
+    const content = input.value.trim();
+    if (!content) return;
+    state.chatMessages.push({ role: "user", content: content });
+    input.value = "";
+    state.chatBusy = true;
+    const send = $("#friday-chat-send");
+    send.disabled = true;
+    send.innerHTML = "<span>Thinking…</span><span class=\"button-arrow\">◌</span>";
+    state.chatMessages.push({ role: "assistant", content: "Contacting the selected model…", pending: true });
+    renderFridayMessages();
+    try {
+      const messages = state.chatMessages.filter(function (item) { return !item.pending; }).map(function (item) {
+        return { role: item.role, content: item.content };
+      });
+      const result = await api("/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ messages: messages, model_route: $("#friday-model-route").value || "auto" })
+      });
+      state.chatMessages.pop();
+      state.chatMessages.push({ role: "assistant", content: result.answer, provider: result.provider, model: result.model });
+      $("#friday-chat-status").textContent = "Answered by " + result.provider + (result.model ? " · " + result.model : "");
+      renderFridayMessages();
+    } catch (error) {
+      state.chatMessages.pop();
+      state.chatMessages.push({ role: "assistant", content: "I could not reach a live AI model. " + error.message + "\n\nOpen docs/FRIDAY_LOCAL_SETUP.md and configure a provider. This is an actual connection error, not a generated answer." });
+      $("#friday-chat-status").textContent = "Provider request failed — check configuration.";
+      renderFridayMessages();
+    } finally {
+      state.chatBusy = false;
+      send.disabled = false;
+      send.innerHTML = "<span>Send</span><span class=\"button-arrow\">↗</span>";
+      input.focus();
+    }
+  }
+\n  function bindEvents() {
     document.addEventListener("click", function (event) {
       const viewButton = event.target.closest("[data-view-target]");
       if (viewButton) {
@@ -758,7 +850,30 @@
         renderAllTasks();
       }
     });
-    $("#refresh-button").addEventListener("click", function () { loadAll(true).then(function (ok) { if (ok) toast("TEDDY status refreshed."); }); });
+    $("#open-friday-chat").addEventListener("click", openFridayChat);
+    $("#close-friday-chat").addEventListener("click", closeFridayChat);
+    $("#friday-chat-modal").addEventListener("click", function (event) {
+      if (event.target === $("#friday-chat-modal")) closeFridayChat();
+      const suggestion = event.target.closest("[data-friday-prompt]");
+      if (suggestion) { $("#friday-chat-input").value = suggestion.getAttribute("data-friday-prompt"); $("#friday-chat-input").focus(); }
+    });
+    $("#friday-chat-form").addEventListener("submit", sendFridayMessage);
+    $("#friday-chat-input").addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("#friday-chat-form").requestSubmit(); }
+    });
+    $("#friday-model-route").addEventListener("change", function () {
+      const route = routeById(this.value);
+      $("#friday-provider-state").textContent = route && route.available ? "Configured route selected" : "Route needs setup";
+    });
+    $("#clear-friday-chat").addEventListener("click", function () {
+      if (state.chatBusy) return;
+      state.chatMessages = [];
+      renderFridayMessages();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !$("#friday-chat-modal").hidden) closeFridayChat();
+    });
+    $("#refresh-button").addEventListener("click", function () { loadAll(true).then(function (ok) { if (ok) toast("FRIDAY status refreshed."); }); });
     $("#tasks-refresh").addEventListener("click", function () { loadAll(true); });
     $("#integrations-refresh").addEventListener("click", function () { loadAll(true); });
     $("#task-form").addEventListener("submit", submitTask);
