@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import json
+import os
+from urllib.request import urlopen
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +20,23 @@ from backend.model_profiles import load_model_profiles
 
 def _cli_status(command: str) -> str:
     return "installed_needs_verification" if shutil.which(command) else "not_installed"
+
+
+def _ollama_runtime_status() -> tuple[str, str]:
+    """Probe Ollama tags without exposing prompts or credentials."""
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+    try:
+        with urlopen(base_url + "/api/tags", timeout=1.5) as response:
+            if response.status != 200:
+                return "unreachable", "Ollama server returned a non-200 status."
+            payload = json.loads(response.read(1_000_000).decode("utf-8"))
+        models = payload.get("models", [])
+        names = [item.get("name") for item in models if isinstance(item, dict) and item.get("name")]
+        if names:
+            return "reachable_models_detected", "Ollama is reachable. Installed model tags: " + ", ".join(names[:20])
+        return "reachable_no_models", "Ollama is reachable but reports no downloaded models. Pull a model before selecting this route."
+    except Exception as exc:
+        return ("not_running" if shutil.which("ollama") else "not_installed"), "Could not query " + base_url + "/api/tags; error type: " + type(exc).__name__
 
 
 def _package_available(package: str) -> bool:
@@ -34,6 +54,78 @@ def list_integrations() -> list[dict[str, Any]]:
     )
 
     integrations = [
+        {
+            "id": "ollama",
+            "name": "Ollama Local Runtime",
+            "kind": "model_runtime",
+            "status": _ollama_runtime_status()[0],
+            "purpose": "Serve local Llama, Qwen, and other Ollama-compatible models",
+            "details": _ollama_runtime_status()[1],
+        },
+        {
+            "id": "kimi",
+            "name": "Kimi",
+            "kind": "model_provider",
+            "status": "profile_configurable",
+            "purpose": "Hosted Kimi inference through a user-configured compatible endpoint",
+            "details": "Requires a verified endpoint, exact model ID and secret environment variable. Availability and free quota depend on the provider account.",
+        },
+        {
+            "id": "qwen",
+            "name": "Qwen",
+            "kind": "model_provider",
+            "status": "profile_configurable",
+            "purpose": "Hosted Qwen API or local Qwen model served by Ollama",
+            "details": "Only configured profiles or models actually discovered by Ollama should be marked available.",
+        },
+        {
+            "id": "llama",
+            "name": "Llama",
+            "kind": "model_family",
+            "status": "requires_runtime_model_check",
+            "purpose": "Local or hosted Llama-family inference",
+            "details": "For local inference, pull a compatible model and confirm it appears in the Ollama model list. This entry does not claim model weights are installed.",
+        },
+        {
+            "id": "opencode",
+            "name": "OpenCode",
+            "kind": "coding_agent",
+            "status": _cli_status("opencode"),
+            "purpose": "Optional coding-agent CLI using configured models and tools",
+            "details": "CLI detection only; authentication, sandbox behavior and a smoke test must be verified before dispatch is enabled.",
+        },
+        {
+            "id": "nemoclaw",
+            "name": "NVIDIA NemoClaw",
+            "kind": "agent_sandbox",
+            "status": _cli_status("nemoclaw"),
+            "purpose": "Optional policy and sandbox layer for supported agents",
+            "details": "Not a model. Verify host prerequisites, supported runtime and policy enforcement before using it to isolate workers.",
+        },
+        {
+            "id": "cursor",
+            "name": "Cursor",
+            "kind": "external_editor",
+            "status": "external_handoff_only",
+            "purpose": "Open or hand off a project to the Cursor editor",
+            "details": "No GUI automation is claimed. Direct control requires a supported computer-use integration and user authorization.",
+        },
+        {
+            "id": "bolt",
+            "name": "Bolt",
+            "kind": "external_app_builder",
+            "status": "documented_export_or_api_required",
+            "purpose": "Import generated app source through supported export or Git workflows",
+            "details": "Do not assume private endpoints or remote project access. Review imported code before execution.",
+        },
+        {
+            "id": "lovable",
+            "name": "Lovable",
+            "kind": "external_app_builder",
+            "status": "documented_export_or_api_required",
+            "purpose": "Import generated app source through supported export or Git workflows",
+            "details": "Do not assume private endpoints or remote project access. Review imported code before execution.",
+        },
         {
             "id": "local_fallback",
             "name": "TEDDY Local Planner",

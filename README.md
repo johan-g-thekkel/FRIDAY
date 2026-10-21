@@ -1,6 +1,6 @@
-# TEDDY
+# FRIDAY
 
-**TEDDY** is a personal AI operator prototype for the Nebius Global AI Hackathon. The intended product combines a minimal command-centre UI, model routing, specialized Bots, policy-controlled tools, and a verified coding loop.
+**FRIDAY** is a personal AI operator prototype for the Nebius Global AI Hackathon. The intended product combines a minimal command-centre UI, model routing, specialized Bots, policy-controlled tools, and a verified coding loop.
 
 ## Command-centre UI
 
@@ -222,6 +222,12 @@ bash scripts/tmux-dev.sh
 ```
 
 Detach without stopping the session with **Ctrl+B**, then **D**. Reattach with `tmux attach -t teddy-dev`. Stop it with `tmux kill-session -t teddy-dev`.
+
+## Expanded FRIDAY multi-agent architecture
+
+See [FRIDAY Agent Integration Blueprint](docs/FRIDAY_AGENT_INTEGRATION_BLUEPRINT.md) for the intended adapter contracts and safety requirements for Ollama, Kimi, Qwen, Llama, Nemotron, OpenCode, Codex, Claude Code, Hermes Agent, NemoClaw, Cursor, Bolt, Lovable, ECC Skills, Needle, REA, and media processing.
+
+The integration inventory now reports Ollama runtime reachability and the model tags returned by its local `/api/tags` endpoint. Kimi and Qwen hosted access remains profile-configured; Llama/Qwen local availability depends on the models actually installed in Ollama. OpenCode/NemoClaw are CLI-detected only, and Cursor/Bolt/Lovable are handoff/import states—not verified direct API integrations.
 
 ## Integration inventory
 

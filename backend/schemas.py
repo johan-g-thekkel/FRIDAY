@@ -91,3 +91,13 @@ class BackendStatus(BaseModel):
     configured_model: str | None
     execution_enabled: bool
     note: str
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=12000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage] = Field(min_length=1, max_length=20)
+    model_route: str = Field(default="auto", min_length=1, max_length=48, pattern=r"^[a-z0-9][a-z0-9_-]{0,47}$")

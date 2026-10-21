@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime configuration loaded from environment variables or .env."""
 
-    app_name: str = "TEDDY"
+    app_name: str = "FRIDAY"
     app_env: str = "development"
     nebius_api_key: str | None = None
     nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1"
@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     claude_fable_max_output_tokens: int = 900
     claude_fable_max_prompt_chars: int = 8000
     claude_fable_max_estimated_cost_usd: float = 0.10
-    sqlite_path: str = "./data/teddy.db"
-    skills_root: str = "./skills/imported"
+    sqlite_path: str = "./data/friday.db"
+    skills_root: str = "./skills/friday-imported"
     skills_policy_path: str = "./data/skills-policy.json"
     max_active_skills: int = 2
     max_skill_context_chars: int = 6000

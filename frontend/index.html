@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d14">
-  <meta name="description" content="TEDDY AI operator command centre">
-  <title>TEDDY — Command Centre</title>
+  <meta name="description" content="FRIDAY AI operator command centre">
+  <title>FRIDAY — Command Centre</title>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="/" aria-label="TEDDY home">
+      <a class="brand" href="/" aria-label="FRIDAY home">
         <span class="brand-mark"><span></span><span></span><span></span></span>
-        <span><strong>TEDDY</strong><small>AI OPERATING SYSTEM</small></span>
+        <span><strong>FRIDAY</strong><small>AI OPERATING SYSTEM</small></span>
       </a>
       <div class="workspace-label">WORKSPACE</div>
       <nav class="nav-list" aria-label="Main navigation">
@@ -29,17 +29,17 @@
           <span class="pulse-dot" id="sidebar-pulse"></span>
           <div><strong id="sidebar-api-label">Connecting to API</strong><small id="sidebar-api-detail">Checking local backend…</small></div>
         </div>
-        <div class="sidebar-foot"><span>TEDDY CORE</span><span>v0.2</span></div>
+        <div class="sidebar-foot"><span>FRIDAY CORE</span><span>v0.2</span></div>
       </div>
     </aside>
 
     <main class="main-area">
       <header class="topbar">
-        <div class="breadcrumbs"><span>TEDDY</span><span class="crumb-slash">/</span><strong id="page-crumb">COMMAND CENTRE</strong></div>
+        <div class="breadcrumbs"><span>FRIDAY</span><span class="crumb-slash">/</span><strong id="page-crumb">COMMAND CENTRE</strong></div>
         <div class="topbar-right">
           <span class="runtime-pill"><span class="tiny-dot"></span><span id="runtime-mode">PLANNER MODE</span></span>
           <button class="icon-button" id="refresh-button" title="Refresh status" aria-label="Refresh status">↻</button>
-          <div class="avatar">T</div>
+          <div <button class="primary-button friday-open-button" id="open-friday-chat" type="button"><span>Open FRIDAY</span><span class="button-arrow">↗</span></button><div class="avatar">F</div>
         </div>
       </header>
 
@@ -51,7 +51,7 @@
           </div>
 
           <div class="mode-notice" id="execution-notice">
-            <div class="notice-icon">ⓘ</div><div><strong>Planning is online. Coding runs are opt-in.</strong><p>TEDDY can route prompts and save plans. When Codex CLI is installed, eligible coding tasks can run in a separate sandboxed Git worktree; general shell execution and automatic repairs outside that worker are not globally enabled.</p></div>
+            <div class="notice-icon">ⓘ</div><div><strong>Planning is online. Coding runs are opt-in.</strong><p>FRIDAY can route prompts and save plans. When Codex CLI is installed, eligible coding tasks can run in a separate sandboxed Git worktree; general shell execution and automatic repairs outside that worker are not globally enabled.</p></div>
             <a href="/docs" target="_blank" rel="noreferrer">API docs ↗</a>
           </div>
 
@@ -65,14 +65,14 @@
           <div class="workspace-grid">
             <section class="panel task-composer">
               <div class="panel-header"><div><div class="eyebrow">NEW REQUEST</div><h2>What are we working on?</h2></div><span class="panel-orb">✳</span></div>
-              <p class="panel-description">Describe the outcome. TEDDY will classify the task, choose an available route, and produce a saved plan.</p>
+              <p class="panel-description">Describe the outcome. FRIDAY will classify the task, choose an available route, and produce a saved plan.</p>
               <form id="task-form">
                 <label class="sr-only" for="task-prompt">Describe your task</label>
                 <textarea id="task-prompt" maxlength="8000" required placeholder="Build a Python utility that watches a folder, detects new CSV files, and validates their columns…"></textarea>
                 <div class="composer-bottom"><span id="prompt-counter">0 / 8000</span><span>Enter a clear goal and constraints</span></div>
                 <div class="composer-options">
                   <div class="field-group"><label for="model-route">MODEL ROUTE</label><select id="model-route"><option value="auto">Automatic routing</option></select><small id="route-help">Uses the best configured route available.</small></div>
-                  <div class="field-group"><label for="bot-select">BOT PROFILE</label><select id="bot-select"><option value="">TEDDY default</option></select><small>Optional role, memory, and runtime policy.</small></div>
+                  <div class="field-group"><label for="bot-select">BOT PROFILE</label><select id="bot-select"><option value="">FRIDAY default</option></select><small>Optional role, memory, and runtime policy.</small></div>
                   <div class="field-group"><label>APPROVED SKILLS <span class="optional-label">OPTIONAL</span></label><div class="skill-select-wrap" id="composer-skills"><span class="muted-small">Loading approved skills…</span></div></div>
                 </div>
                 <div class="composer-actions"><span class="composer-safe"><span class="lock-icon">⌑</span> No commands are executed</span><button class="primary-button" id="submit-task" type="submit"><span>Generate task plan</span><span class="button-arrow">↗</span></button></div>
@@ -110,7 +110,7 @@
           <div class="bot-studio-grid">
             <section class="panel bot-editor-panel">
               <div class="panel-header"><div><div class="eyebrow" id="bot-form-eyebrow">NEW BOT PROFILE</div><h2 id="bot-form-title">Create a specialist</h2></div><span class="panel-orb">⌬</span></div>
-              <p class="panel-description">Bots are saved in TEDDY's local SQLite database. Their instructions and notes are context—not elevated system policy. A configured model is required for the profile to influence planning; the local fallback stays deterministic.</p>
+              <p class="panel-description">Bots are saved in FRIDAY's local SQLite database. Their instructions and notes are context—not elevated system policy. A configured model is required for the profile to influence planning; the local fallback stays deterministic.</p>
               <form id="bot-form">
                 <div class="field-group bot-form-field"><label for="bot-name">BOT NAME</label><input id="bot-name" type="text" maxlength="80" required placeholder="e.g. ESP32 Workshop"/></div>
                 <div class="field-group bot-form-field"><label for="bot-description">PURPOSE</label><input id="bot-description" type="text" maxlength="300" placeholder="What this Bot specializes in"/></div>
@@ -126,7 +126,7 @@
                 <div class="form-feedback" id="bot-form-feedback" role="status" aria-live="polite" hidden></div>
               </form>
             </section>
-            <section class="panel bot-list-panel"><div class="panel-header"><div><div class="eyebrow">YOUR SPECIALISTS</div><h2>Saved Bots</h2></div><button class="text-button" id="bots-refresh">Refresh ↻</button></div><div id="bot-list" class="bot-list"><div class="empty-state"><div class="empty-glyph">⌬</div><strong>No Bots created yet</strong><p>Create a profile to give TEDDY a reusable role and context.</p></div></div></section>
+            <section class="panel bot-list-panel"><div class="panel-header"><div><div class="eyebrow">YOUR SPECIALISTS</div><h2>Saved Bots</h2></div><button class="text-button" id="bots-refresh">Refresh ↻</button></div><div id="bot-list" class="bot-list"><div class="empty-state"><div class="empty-glyph">⌬</div><strong>No Bots created yet</strong><p>Create a profile to give FRIDAY a reusable role and context.</p></div></div></section>
           </div>
           <p class="page-footnote">Bot records and notes live in local task storage. This prototype has no user-authentication layer; do not expose it to untrusted users.</p>
         </section>
@@ -146,7 +146,7 @@
         <section class="view-section" id="view-skills">
           <div class="page-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> KNOWLEDGE / TOOLING</div><h1>Skills library<span class="heading-period">.</span></h1><p class="page-subtitle">Metadata is discoverable here. Skills stay disabled until explicitly reviewed and hash-approved locally.</p></div><span class="section-count" id="skill-count-label">— skills</span></div>
           <section class="panel skills-upload-panel">
-            <div class="skills-upload-copy"><div class="eyebrow">ADD SKILLS</div><h2>Import a skills archive</h2><p>Upload an ECC, Desktop2222, or curated TEDDY ZIP. TEDDY copies canonical <code>SKILL.md</code> files only—scripts and binaries are never executed or installed.</p><small>Accepted names: <code>ECC-main.zip</code>, <code>Desktop2222.zip</code>, <code>teddy-skill-candidates.zip</code>. Every imported skill starts disabled until reviewed.</small></div>
+            <div class="skills-upload-copy"><div class="eyebrow">ADD SKILLS</div><h2>Import a skills archive</h2><p>Upload an ECC, Desktop2222, or curated FRIDAY ZIP. FRIDAY copies canonical <code>SKILL.md</code> files only—scripts and binaries are never executed or installed.</p><small>Accepted names: <code>ECC-main.zip</code>, <code>Desktop2222.zip</code>, <code>teddy-skill-candidates.zip</code>. Every imported skill starts disabled until reviewed.</small></div>
             <form id="skill-import-form" class="skills-upload-form">
               <label for="skills-archive" class="file-drop"><span class="file-drop-icon">⇧</span><span><strong id="skills-file-name">Choose a ZIP archive</strong><small>Maximum upload: 260 MiB</small></span><input id="skills-archive" type="file" accept=".zip,application/zip" required></label>
               <button class="primary-button" type="submit" id="skills-import-button"><span>Import metadata</span><span class="button-arrow">↗</span></button>
@@ -159,7 +159,7 @@
           <p class="page-footnote" id="skills-note">No skill contents or secrets are exposed by the metadata endpoint.</p>
         </section>
       </div>
-      <footer class="app-footer"><span>TEDDY <span class="footer-dim">/ PERSONAL AI OPERATOR</span></span><span><span class="footer-green-dot"></span> Backend-connected workspace</span><span id="footer-clock">—</span></footer>
+      <footer class="app-footer"><span>FRIDAY <span class="footer-dim">/ PERSONAL AI OPERATOR</span></span><span><span class="footer-green-dot"></span> Backend-connected workspace</span><span id="footer-clock">—</span></footer>
     </main>
   </div>
   <div id="skill-review-modal" class="modal-backdrop" hidden>
@@ -169,7 +169,7 @@
         <button type="button" class="icon-button" id="skill-review-close" aria-label="Close skill review">×</button>
       </div>
       <div class="skill-review-meta"><span id="skill-review-path"></span><span id="skill-review-status"></span></div>
-      <div class="skill-review-warning"><strong>Inspect this text carefully.</strong> The skill can contain misleading instructions. It is supplemental model context, never system policy, and TEDDY does not execute any commands from it.</div>
+      <div class="skill-review-warning"><strong>Inspect this text carefully.</strong> The skill can contain misleading instructions. It is supplemental model context, never system policy, and FRIDAY does not execute any commands from it.</div>
       <pre id="skill-review-content" class="skill-review-content" tabindex="0"></pre>
       <div class="skill-review-hash-row"><span>CONTENT SHA-256</span><code id="skill-review-hash"></code></div>
       <div class="skill-review-approval">
@@ -182,6 +182,20 @@
         <button type="button" class="text-button danger-text" id="skill-review-disable" hidden>Disable skill</button>
         <button type="button" class="primary-button" id="skill-review-enable" disabled><span>Approve this exact version</span><span class="button-arrow">↗</span></button>
       </div>
+    </section>
+  </div>
+
+  <div id="friday-chat-modal" class="modal-backdrop friday-chat-backdrop" hidden>
+    <section class="friday-chat-dialog" role="dialog" aria-modal="true" aria-labelledby="friday-chat-title">
+      <header class="friday-chat-header">
+        <div class="friday-brand-orb">F</div>
+        <div class="friday-chat-heading"><div class="eyebrow">LOCAL-FIRST / LIVE MODEL ROUTING</div><h2 id="friday-chat-title">FRIDAY <span>Central Intelligence</span></h2><p id="friday-chat-status">Checking configured AI routes…</p></div>
+        <button type="button" class="icon-button" id="close-friday-chat" aria-label="Close FRIDAY chat">×</button>
+      </header>
+      <div class="friday-chat-toolbar"><label for="friday-model-route">MODEL</label><select id="friday-model-route"><option value="auto">Automatic available route</option></select><span id="friday-provider-state" class="friday-provider-state">Checking provider</span><button type="button" class="text-button" id="clear-friday-chat">New conversation ↻</button></div>
+      <div id="friday-chat-messages" class="friday-chat-messages" aria-live="polite"><div class="friday-welcome"><div class="friday-welcome-symbol">✳</div><h3>What should we solve?</h3><p>Ask for coding help, architecture, research synthesis, debugging, or planning. FRIDAY will use the selected live model and report provider errors honestly.</p><div class="friday-suggestions"><button type="button" data-friday-prompt="Design a robust local-first AI agent architecture for FRIDAY, with bounded retries and test verification.">Design agent architecture</button><button type="button" data-friday-prompt="Help me debug my Python project. Ask for the necessary files and propose a testable fix.">Debug a project</button><button type="button" data-friday-prompt="Create a multi-source research plan and separate verified facts from assumptions.">Plan research</button></div></div></div>
+      <form id="friday-chat-form" class="friday-chat-composer"><textarea id="friday-chat-input" rows="2" maxlength="12000" placeholder="Message FRIDAY… (Enter to send, Shift+Enter for a new line)" required></textarea><div class="friday-chat-compose-footer"><span>Keys stay on the server · no fake responses</span><button class="primary-button" id="friday-chat-send" type="submit"><span>Send</span><span class="button-arrow">↗</span></button></div></form>
+      <div class="friday-chat-disclaimer">Chat answers come from the configured provider. This window does not itself execute shell commands, edit files, reverse-engineer arbitrary apps, or render video.</div>
     </section>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
