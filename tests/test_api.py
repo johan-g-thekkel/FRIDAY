@@ -69,6 +69,8 @@ def test_integrations_endpoint_reports_status(tmp_path):
         by_id = {item["id"]: item for item in items}
         assert {
             "local_fallback",
+            "ollama_local",
+            "opencode",
             "nvidia_nim",
             "openai_compatible",
             "claude_fable_5_1",
