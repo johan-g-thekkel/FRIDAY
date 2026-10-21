@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $model = if ($env:FRIDAY_OLLAMA_MODEL) { $env:FRIDAY_OLLAMA_MODEL } else { "qwen2.5:3b" }
-$baseUrl = if ($env:OLLAMA_HOST) { $env:OLLAMA_HOST.TrimEnd("/") } else { "http://127.0.0.1:11434" }
+$baseUrl = if ($env:OLLAMA_BASE_URL) { $env:OLLAMA_HOST.TrimEnd("/") } else { "http://127.0.0.1:11434" }
 
 Write-Host "FRIDAY local AI setup" -ForegroundColor Cyan
 Write-Host "Model: $model"
