@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MODEL="${FRIDAY_OLLAMA_MODEL:-qwen2.5:3b}"
-BASE_URL="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+BASE_URL="${OLLAMA_BASE_URL:-http://127.0.0.1:11434}"
 
 echo "FRIDAY local AI setup"
 echo "Model to pull: $MODEL"
