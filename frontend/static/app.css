@@ -57,3 +57,7 @@
 .friday-chat-disclaimer{padding:0 20px 13px;text-align:center;color:#66718a;font-size:9px;line-height:1.5}
 .friday-chat-dialog button:disabled{opacity:.55;cursor:wait}
 @media(max-width:650px){.friday-chat-backdrop{padding:0}.friday-chat-dialog{height:100dvh;max-height:100dvh;border-radius:0;border-left:0;border-right:0}.friday-chat-toolbar{flex-wrap:wrap;gap:8px}.friday-chat-toolbar select{flex:1;max-width:none;min-width:120px}.friday-provider-state{flex-basis:40%}.friday-chat-toolbar .text-button{margin-left:auto}.friday-chat-header{padding:14px}.friday-chat-messages{padding:15px 12px}.friday-message{max-width:96%}.friday-chat-composer{margin:0 10px 8px}.friday-chat-disclaimer{padding:0 12px 10px}.friday-chat-heading h2 span{display:block;margin-top:3px}}
+
+
+/* FRIDAY spatial console navigation */
+.vision-nav-link{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}.vision-nav-link .nav-shortcut{margin-left:auto;color:#7eeaff;font-size:9px;letter-spacing:.08em}.vision-nav-link:hover{border-color:#4fbed6;color:#b8f7ff}
