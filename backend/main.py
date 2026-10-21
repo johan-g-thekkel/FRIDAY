@@ -28,6 +28,7 @@ from backend.skill_registry import (
 )
 from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, SkillReviewRequest, TaskCreate, TaskResponse
 from backend.settings import get_settings
+from backend.local_ai import router as local_ai_router
 from backend.agent_runner import (
     WorktreeInspectionError, agent_available, inspect_codex_worktree_changes, run_codex_task,
 )
@@ -66,6 +67,7 @@ app.add_middleware(
 # Serve the command-centre UI from the same origin as the API. This keeps
 # Codespaces setup simple and avoids exposing API credentials to browser code.
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
+app.include_router(local_ai_router)
 
 
 @app.get("/", tags=["ui"], include_in_schema=False)
