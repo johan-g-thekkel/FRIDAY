@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +14,8 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen2.5:1.5b"
     local_stt_model: str = "tiny"
+    # Allow only explicit app-open/browser actions by default on a real Windows host.
+    enable_local_desktop_actions: bool = os.name == "nt"
 
     nebius_api_key: str | None = None
     nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1"
