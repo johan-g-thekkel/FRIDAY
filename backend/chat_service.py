@@ -68,7 +68,7 @@ async def _ollama_completion(
     if not selected:
         raise ChatRouteUnavailable(
             "No matching local Ollama model is installed. Start Ollama in the same runtime as FRIDAY, "
-            "then run ollama pull qwen2.5:3b. If you selected a specific model, make sure its exact "
+            "then run ollama pull qwen2.5:1.5b. If you selected a specific model, make sure its exact "
             "tag appears in ollama list."
         )
     return await _openai_compatible_completion(
