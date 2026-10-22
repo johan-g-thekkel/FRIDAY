@@ -235,7 +235,7 @@
       }
     } finally {
       state.processing = false;
-      if (state.active && !window.speechSynthesis.speaking) {
+      if (state.active && (!window.speechSynthesis || !window.speechSynthesis.speaking)) {
         setPresence("listening", "LISTENING · LOCAL AUDIO CAPTURE");
         setStatus("Listening again. Speak when ready.", "live");
       }
