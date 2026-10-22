@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     model_profiles_path: str = "./data/model-profiles.json"
     # Fable is opt-in to avoid unexpected paid inference calls.
     anthropic_api_key: str | None = None
+    # ElevenLabs speech generation. Keep the key server-side in Codespaces Secrets.
+    elevenlabs_api_key: str | None = None
+    elevenlabs_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
+    elevenlabs_model_id: str = "eleven_flash_v2_5"
     claude_fable_model: str = "claude-fable-5-1"
     claude_fable_enabled: bool = False
     claude_fable_max_output_tokens: int = 900
