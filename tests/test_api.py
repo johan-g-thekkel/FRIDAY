@@ -684,3 +684,41 @@ def test_voice_status_exposes_local_model_and_speech_readiness(tmp_path, monkeyp
         assert body["ollama_reachable"] is True
         assert body["models"] == ["qwen2.5:1.5b"]
         assert "transcription_ready" in body
+
+def test_voice_action_recognizer_only_accepts_explicit_allowlisted_intents():
+    from backend.local_actions import resolve_voice_action
+
+    assert resolve_voice_action("FRIDAY, open Notepad") == {
+        "kind": "open_app",
+        "target": "notepad",
+    }
+    assert resolve_voice_action("please open file explorer") == {
+        "kind": "open_app",
+        "target": "file_explorer",
+    }
+    assert resolve_voice_action("open https://example.com") == {
+        "kind": "open_url",
+        "target": "https://example.com",
+    }
+    assert resolve_voice_action("run powershell and delete files") is None
+    assert resolve_voice_action("open notepad and type my password") is None
+
+
+def test_voice_chat_routes_allowlisted_action_without_calling_a_model(tmp_path, monkeypatch):
+    from backend import main
+
+    expected = {
+        "answer": "Opened notepad.",
+        "provider": "local-desktop-action",
+        "model": None,
+        "action": {"status": "completed", "kind": "open_app", "target": "notepad"},
+    }
+    monkeypatch.setattr(main, "handle_voice_action", lambda prompt: expected if prompt == "open notepad" else None)
+
+    with _client_for_test(tmp_path) as client:
+        response = client.post(
+            "/api/v1/chat",
+            json={"messages": [{"role": "user", "content": "open notepad"}], "model_route": "auto"},
+        )
+        assert response.status_code == 200
+        assert response.json() == expected
