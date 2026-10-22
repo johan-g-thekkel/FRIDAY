@@ -107,7 +107,7 @@ async def backend_status():
     if local_models:
         provider = "ollama-local"
         configured_model = select_ollama_model("ollama", local_models)
-        note = "A local Ollama model is detected. FRIDAY prefers local inference and only uses configured cloud routes when no local model is installed."
+        note = "A local Ollama model is detected. FRIDAY's automatic voice route stays on local inference; cloud providers require explicit selection."
     elif current.nebius_ready:
         provider = "nebius-token-factory"
         configured_model = current.nebius_model
@@ -151,7 +151,7 @@ async def model_routes():
                 "name": "Automatic (local-first)",
                 "available": True,
                 "model": None,
-                "details": "Uses an installed Ollama model first, then explicitly configured provider routes. No fake model answer is generated.",
+                "details": "Uses only an installed Ollama model. If none is present, voice chat displays setup instructions rather than silently using a cloud model.",
             },
             {
                 "id": "ollama",
