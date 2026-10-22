@@ -722,3 +722,18 @@ def test_voice_chat_routes_allowlisted_action_without_calling_a_model(tmp_path, 
         )
         assert response.status_code == 200
         assert response.json() == expected
+
+def test_auto_voice_chat_never_falls_back_to_cloud(tmp_path, monkeypatch):
+    from backend import chat_service
+
+    async def no_local_models():
+        return []
+
+    monkeypatch.setattr(chat_service, "list_ollama_models", no_local_models)
+    with _client_for_test(tmp_path) as client:
+        response = client.post(
+            "/api/v1/chat",
+            json={"messages": [{"role": "user", "content": "Please explain gravity."}], "model_route": "auto"},
+        )
+        assert response.status_code == 503
+        assert "local-only" in response.json()["detail"]
