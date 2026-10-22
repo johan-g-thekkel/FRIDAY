@@ -1,0 +1,3 @@
+# Optional offline speech recognition. Installs a local Whisper runtime.
+# The model weights download on first transcription, then can run offline.
+faster-whisper>=1.1,<2.0
