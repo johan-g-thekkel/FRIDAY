@@ -640,3 +640,47 @@ def test_autonomy_policy_endpoint_exposes_profiles_and_safeguards(tmp_path):
         assert policy["safeguards"]["high_risk_actions_require_approval"] is True
         assert policy["safeguards"]["untrusted_skills_execute_automatically"] is False
         assert policy["implementation_status"]["hermes_agent"] == "inventory_only_pending_tested_adapter"
+
+def test_root_serves_voice_first_home_and_console(tmp_path):
+    with _client_for_test(tmp_path) as client:
+        home = client.get("/")
+        assert home.status_code == 200
+        assert "Activate FRIDAY" in home.text
+        assert 'id="activate-button"' in home.text
+
+        console = client.get("/console")
+        assert console.status_code == 200
+        assert "Command centre" in console.text
+
+
+def test_local_ollama_routes_reflect_installed_models(tmp_path, monkeypatch):
+    from backend import main
+
+    async def fake_local_models():
+        return ["qwen2.5:1.5b", "llama3.2:1b"]
+
+    monkeypatch.setattr(main, "list_ollama_models", fake_local_models)
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api/v1/models")
+        assert response.status_code == 200
+        routes = {item["id"]: item for item in response.json()["routes"]}
+        assert routes["ollama"]["available"] is True
+        assert routes["ollama"]["model"] == "qwen2.5:1.5b"
+        assert routes["ollama_qwen2_5_1_5b"]["model"] == "qwen2.5:1.5b"
+        assert routes["ollama_llama3_2_1b"]["model"] == "llama3.2:1b"
+
+
+def test_voice_status_exposes_local_model_and_speech_readiness(tmp_path, monkeypatch):
+    from backend import main
+
+    async def fake_local_models():
+        return ["qwen2.5:1.5b"]
+
+    monkeypatch.setattr(main, "list_ollama_models", fake_local_models)
+    with _client_for_test(tmp_path) as client:
+        response = client.get("/api/v1/voice/status")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ollama_reachable"] is True
+        assert body["models"] == ["qwen2.5:1.5b"]
+        assert "transcription_ready" in body
