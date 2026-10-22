@@ -884,7 +884,8 @@
       input.focus();
     }
   }
-\n  function bindEvents() {
+
+  function bindEvents() {
     document.addEventListener("click", function (event) {
       const viewButton = event.target.closest("[data-view-target]");
       if (viewButton) {
