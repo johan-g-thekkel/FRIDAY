@@ -29,8 +29,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Check backend Python syntax
+        run: python -m py_compile backend/*.py
+
       - name: Check frontend JavaScript syntax
-        run: node --check frontend/static/app.js
+        run: |
+          node --check frontend/static/app.js
+          node --check frontend/static/voice.js
 
       - name: Run tests
         run: pytest -q
