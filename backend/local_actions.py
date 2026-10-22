@@ -135,7 +135,7 @@ def handle_voice_action(prompt: str) -> dict[str, Any] | None:
         return {
             "answer": (
                 "I recognized that local action, but local desktop control is disabled on this host. "
-                "Run FRIDAY on your laptop and set FRIDAY_ENABLE_LOCAL_DESKTOP_ACTIONS=true. "
+                "Run FRIDAY on your laptop and set ENABLE_LOCAL_DESKTOP_ACTIONS=true. "
                 "A Codespace cannot open applications on your laptop."
             ),
             "provider": "local-action-guard",
