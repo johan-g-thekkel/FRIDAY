@@ -298,12 +298,18 @@ def test_unconfigured_custom_model_route_returns_conflict(tmp_path):
         assert "openai-compatible" in response.json()["detail"].lower()
 
 
-def test_root_serves_command_centre_ui(tmp_path):
+def test_root_serves_voice_first_ui(tmp_path):
     with _client_for_test(tmp_path) as client:
         response = client.get("/")
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
-        assert "TEDDY" in response.text
+        assert "FRIDAY" in response.text
+        assert "Activate FRIDAY" in response.text
+        assert 'id="activate-button"' in response.text
+
+        console = client.get("/console")
+        assert console.status_code == 200
+        assert "Command centre" in console.text
         assert 'id="task-form"' in response.text
 
         css = client.get("/static/app.css")
