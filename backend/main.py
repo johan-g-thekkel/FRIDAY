@@ -157,7 +157,7 @@ async def model_routes():
                 "provider": "ollama-local",
                 "available": bool(local_models),
                 "model": select_ollama_model("ollama", local_models),
-                "details": "Runs on the machine/container specified by OLLAMA_BASE_URL. Pull at least one model with ollama pull qwen2.5:3b.",
+                "details": "Runs on the machine/container specified by OLLAMA_BASE_URL. Pull at least one model with ollama pull qwen2.5:1.5b.",
             },
             *[
                 {
