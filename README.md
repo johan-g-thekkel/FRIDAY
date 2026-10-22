@@ -8,6 +8,14 @@ The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/stat
 
 **Execution boundary:** planning is always available. Eligible coding tasks can additionally be submitted to the Codex CLI worker when the `codex` executable is installed and authenticated. Each run uses a detached Git worktree and Codex `workspace-write` sandbox, has a bounded timeout, records event metadata, and retains the worktree for human review. TEDDY does not auto-merge, push, deploy, or run non-coding tasks through this worker. Hermes and Claude Code remain inventory-only until separate, tested adapters are provided. Skills can be reviewed and explicitly approved in the Skills Library UI or through the guarded CLI. The UI displays the actual untrusted document, requires an acknowledgement plus an exact `ENABLE SKILL_ID` phrase, and pins its full SHA-256; if the file changes, it becomes unapproved again.
 
+## Voice input and spoken replies
+
+FRIDAY central chat includes an optional ElevenLabs text-to-speech endpoint and a browser microphone dictation button. The ElevenLabs key is only read by the backend; it is never sent to the browser.
+
+In GitHub Codespaces, add a Codespaces secret named `ELEVENLABS_API_KEY` with your key from the [ElevenLabs dashboard](https://elevenlabs.io/app/settings/api-keys). Optionally set `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL_ID` (defaults: `JBFqnCBsd6RMkjVDRZzb` and `eleven_flash_v2_5`). Restart the Codespace after adding a secret. The chat shows a **Listen** button under assistant replies when voice is configured.
+
+The **Dictate** button uses browser speech recognition where supported and requires microphone permission. Wispr Flow is a separate desktop/mobile dictation app, not a live microphone API embedded in this website: install/open Wispr Flow, focus FRIDAY's message field, then use your configured Wispr Flow hotkey to dictate directly into it. Review transcripts before sending.
+
 ## Backend status
 
 The initial backend is now in the repository:
