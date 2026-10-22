@@ -2,7 +2,7 @@ name: TEDDY backend tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/friday-central-console-merge-conflicts]
   pull_request:
     branches: [main]
 
