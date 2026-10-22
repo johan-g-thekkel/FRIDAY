@@ -27,7 +27,7 @@ The API and UI work in both environments. Microphone access requires a secure co
 
 5. Open http://127.0.0.1:8000. Allow microphone access and click Activate FRIDAY. The advanced console is at http://127.0.0.1:8000/console.
 
-On Windows, FRIDAY enables a small explicit local action allowlist by default: say “open Calculator”, “open Notepad”, “open File Explorer”, “open Paint”, or “open browser”. It can also open a spoken HTTP/HTTPS URL in your default browser. These commands only work when the backend runs on the laptop; arbitrary shell commands are not enabled. To disable all local app launches, set FRIDAY_ENABLE_LOCAL_DESKTOP_ACTIONS=false in the environment before starting FRIDAY.
+On Windows, FRIDAY enables a small explicit local action allowlist by default: say “open Calculator”, “open Notepad”, “open File Explorer”, “open Paint”, or “open browser”. It can also open a spoken HTTP/HTTPS URL in your default browser. These commands only work when the backend runs on the laptop; arbitrary shell commands are not enabled. To disable all local app launches, set ENABLE_LOCAL_DESKTOP_ACTIONS=false in the environment before starting FRIDAY.
 
 ## Option B — run inside GitHub Codespaces
 
