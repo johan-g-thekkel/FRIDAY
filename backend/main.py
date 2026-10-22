@@ -31,6 +31,7 @@ from backend.skill_registry import (
 from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, ChatRequest, SkillReviewRequest, TaskCreate, TaskResponse
 from backend.settings import get_settings
 from backend.local_runtime import list_ollama_models, ollama_route_id, select_ollama_model, speech_runtime_status, transcribe_audio
+from backend.local_actions import handle_voice_action
 from backend.agent_runner import (
     WorktreeInspectionError, agent_available, inspect_codex_worktree_changes, run_codex_task,
 )
@@ -217,6 +218,11 @@ async def model_routes():
 @app.post("/api/v1/chat", tags=["chat"])
 async def central_chat(request: ChatRequest):
     """Send conversation messages to a real configured model; never fake a reply."""
+    # Recognize only exact allowlisted voice actions before running model inference.
+    if request.messages and request.messages[-1].role == "user":
+        local_action = handle_voice_action(request.messages[-1].content)
+        if local_action is not None:
+            return local_action
     messages = [{"role": "system", "content": (
         "You are FRIDAY, a practical local-first AI operator. Be clear, technically precise, "
         "and honest about what you have and have not executed. You may plan actions, explain "
