@@ -38,7 +38,7 @@ Open a terminal in the Codespace and run:
     bash scripts/setup_local_runtime.sh --voice
     python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
-In the Ports tab, open port 8000. This downloads the model inside the Codespace; it does not use the laptop's local Ollama process. The setup step downloads Ollama's small qwen2.5:1.5b model and installs optional local Whisper transcription. Whisper model weights are fetched on the first transcription, then cached in that runtime.
+In the Ports tab, open port 8000. This downloads the model inside the Codespace; it does not use the laptop's local Ollama process. The setup step downloads Ollama's small qwen2.5:1.5b model and installs optional local Whisper transcription. The lightweight tiny Whisper model weights are fetched on first transcription, then cached in that runtime.
 
 If the setup script needs to be rerun after a Codespace restart, repeat the model server setup step if Ollama did not remain running. If the local model is missing, check with ollama list and run ollama pull qwen2.5:1.5b.
 
@@ -50,7 +50,7 @@ If the setup script needs to be rerun after a Codespace restart, repeat the mode
 - Interactive API docs: /docs
 - Advanced agent / task console: /console
 
-The voice UI shows whether Ollama and Whisper are ready. It does not fake an answer: if the model is missing, offline transcription is not installed, or a provider fails, it displays the actual failure.
+The voice UI shows whether Ollama and Whisper are ready. Automatic voice chat is local-only: if no Ollama model is installed, FRIDAY explains how to install one and does not silently route your voice to a cloud provider. It does not fake an answer: if the model is missing, offline transcription is not installed, or a selected route fails, it displays the actual failure.
 
 ## Add additional local models
 
@@ -64,8 +64,8 @@ Only tags actually returned by Ollama are offered as local model routes. Use oll
 
 ## Voice runtime behavior
 
-- Speech recognition: optional faster-whisper, installed from requirements-voice.txt, running locally with CPU int8 inference. The Whisper model downloads on first use if not already cached.
+- Speech recognition: optional faster-whisper, installed from requirements-voice.txt, running locally with CPU int8 inference. The selected Whisper model (tiny by default for memory-constrained machines) downloads on first use if not already cached.
 - Speech output: browser/OS speechSynthesis, not ElevenLabs. This works without a hosted TTS key when the browser has an installed system voice.
-- Conversation inference: local Ollama first. When no local model is installed, automatic routing may use an explicitly configured provider; it never fabricates a model answer.
+- Conversation inference: automatic voice mode is strictly local Ollama. If no model is installed, FRIDAY stops with setup instructions instead of hidden cloud fallback. Cloud routes remain optional and must be selected explicitly through the advanced API.
 - Skills and agents: the separate operator console retains reviewed skills and guarded Codex coding worktrees. Agent inventories are not proof of a working integration. FRIDAY does not secretly execute arbitrary shell commands, control the whole desktop, or access unrelated laptop applications from the browser.
 - API secrets belong in .env or environment secrets only. Never commit secrets or paste them into chat.
