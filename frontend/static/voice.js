@@ -142,6 +142,7 @@
         const type = state.recorder && state.recorder.mimeType ? state.recorder.mimeType : "audio/webm";
         const blob = new Blob(state.chunks, { type: type });
         state.chunks = [];
+        state.speechActive = false;
         if (!state.active) return;
         if (blob.size > 1500) await processUtterance(blob);
         if (state.active) startRecorder();
@@ -178,9 +179,9 @@
       state.recorder &&
       state.recorder.state === "recording"
     ) {
-      state.speechActive = false;
       setStatus("Transcribing on-device…", "live");
       setPresence("thinking", "PROCESSING · LOCAL WHISPER");
+      // Keep speechActive true until the final MediaRecorder dataavailable event arrives.
       state.recorder.stop();
     }
     state.frameId = requestAnimationFrame(watchMicrophone);
