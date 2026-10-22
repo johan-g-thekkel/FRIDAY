@@ -10,11 +10,11 @@ FRIDAY's main API, UI, SQLite history, and local inference adapter are served fr
 
 ## Model routing
 
-Chat routes try a real Ollama model first when one is installed, then an explicitly configured model profile or cloud provider. /api/v1/models lists the installed local Ollama tags and configured routes. Missing models and failed providers produce an error rather than a fabricated answer. Local model weights must be downloaded separately; no model weights are bundled into Git.
+Automatic voice chat is strictly local-only: it calls an installed Ollama model and displays a clear setup error if one is missing. Cloud routes remain optional and can be explicitly selected through the API; they are not a hidden automatic fallback. /api/v1/models lists the installed local Ollama tags and configured routes. Missing models and failed providers produce an error rather than a fabricated answer. Local model weights must be downloaded separately; no model weights are bundled into Git.
 
 ## Voice input and spoken replies
 
-Offline speech input uses faster-whisper, installed separately with python -m pip install -r requirements-voice.txt. The selected Whisper weights download on the first transcription and are then cached in the runtime. Speech output uses browser/OS speechSynthesis by default, so no ElevenLabs key is required. The microphone starts only after the user activates the session; audio clips are sent to FRIDAY's backend for local transcription and are not sent to a hosted speech-to-text service by FRIDAY.
+Offline speech input uses faster-whisper, installed separately with python -m pip install -r requirements-voice.txt. The tiny Whisper weights (the low-memory default) download on the first transcription and are then cached in the runtime. Speech output uses browser/OS speechSynthesis by default, so no ElevenLabs key is required. The microphone starts only after the user activates the session; audio clips are sent to FRIDAY's backend for local transcription and are not sent to a hosted speech-to-text service by FRIDAY.
 
 ElevenLabs remains an optional older endpoint at POST /api/v1/voice/speech, but it is not required by the voice-first home screen. Wispr Flow is an independent desktop dictation app and is not embedded as a website microphone API.
 
