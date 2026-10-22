@@ -758,6 +758,14 @@
       body.className = "friday-message-body";
       body.textContent = message.content;
       row.append(label, body);
+      if (message.role === "assistant" && !message.pending && message.content) {
+        const speak = document.createElement("button");
+        speak.type = "button";
+        speak.className = "text-button friday-speak-button";
+        speak.textContent = "▶ Listen";
+        speak.setAttribute("data-friday-speak-index", String(state.chatMessages.indexOf(message)));
+        row.appendChild(speak);
+      }
       root.appendChild(row);
     });
     root.scrollTop = root.scrollHeight;
@@ -772,6 +780,71 @@
     $("#friday-chat-modal").hidden = true;
     document.body.classList.remove("modal-open");
   }
+  async function speakFridayMessage(index, button) {
+    const message = state.chatMessages[index];
+    if (!message || message.role !== "assistant" || !message.content) return;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Generating voice…";
+    try {
+      const response = await fetch("/api/v1/voice/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "audio/mpeg" },
+        body: JSON.stringify({ text: message.content })
+      });
+      if (!response.ok) {
+        let detail = "Voice generation failed.";
+        try { const data = await response.json(); detail = data.detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+      const audioUrl = URL.createObjectURL(await response.blob());
+      const audio = new Audio(audioUrl);
+      audio.onended = function () { URL.revokeObjectURL(audioUrl); button.disabled = false; button.textContent = original; };
+      audio.onerror = function () { URL.revokeObjectURL(audioUrl); button.disabled = false; button.textContent = original; toast("Could not play generated audio."); };
+      await audio.play();
+      button.textContent = "Playing…";
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = original;
+      toast(error.message || "Voice generation failed.");
+    }
+  }
+
+  function startFridayDictation() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const input = $("#friday-chat-input");
+    if (!SpeechRecognition) {
+      $("#friday-voice-status").textContent = "Browser speech recognition unavailable. Focus the message box and use your Wispr Flow hotkey to dictate.";
+      input.focus();
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = navigator.language || "en-IN";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    const prior = input.value;
+    $("#friday-voice-input").disabled = true;
+    $("#friday-voice-status").textContent = "Listening… speak now.";
+    recognition.onresult = function (event) {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+      input.value = prior ? prior + " " + transcript : transcript;
+    };
+    recognition.onerror = function (event) {
+      $("#friday-voice-status").textContent = "Mic error: " + event.error + ". You can also dictate with Wispr Flow.";
+    };
+    recognition.onend = function () {
+      $("#friday-voice-input").disabled = false;
+      if ($("#friday-voice-status").textContent === "Listening… speak now.") $("#friday-voice-status").textContent = "Dictation ready. Review transcript before sending.";
+      input.focus();
+    };
+    try { recognition.start(); }
+    catch (_) {
+      $("#friday-voice-input").disabled = false;
+      $("#friday-voice-status").textContent = "Could not start microphone. Check browser permission or use Wispr Flow.";
+    }
+  }
+
   async function sendFridayMessage(event) {
     event.preventDefault();
     if (state.chatBusy) return;
@@ -858,6 +931,11 @@
       if (suggestion) { $("#friday-chat-input").value = suggestion.getAttribute("data-friday-prompt"); $("#friday-chat-input").focus(); }
     });
     $("#friday-chat-form").addEventListener("submit", sendFridayMessage);
+    $("#friday-voice-input").addEventListener("click", startFridayDictation);
+    $("#friday-chat-messages").addEventListener("click", function (event) {
+      const button = event.target.closest("[data-friday-speak-index]");
+      if (button) speakFridayMessage(Number(button.getAttribute("data-friday-speak-index")), button);
+    });
     $("#friday-chat-input").addEventListener("keydown", function (event) {
       if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); $("#friday-chat-form").requestSubmit(); }
     });
