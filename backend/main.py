@@ -141,6 +141,7 @@ async def backend_status():
 async def model_routes():
     """List model routes this backend can actually select today."""
     current = get_settings()
+    local_models = await list_ollama_models()
     return {
         "default_route": "auto",
         "routes": [
