@@ -310,7 +310,7 @@ def test_root_serves_voice_first_ui(tmp_path):
         console = client.get("/console")
         assert console.status_code == 200
         assert "Command centre" in console.text
-        assert 'id="task-form"' in response.text
+        assert 'id="task-form"' in console.text
 
         css = client.get("/static/app.css")
         script = client.get("/static/app.js")
