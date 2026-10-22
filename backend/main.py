@@ -30,6 +30,7 @@ from backend.skill_registry import (
 )
 from backend.schemas import BackendStatus, BotCreate, BotResponse, BotUpdate, ChatRequest, SkillReviewRequest, TaskCreate, TaskResponse
 from backend.settings import get_settings
+from backend.local_runtime import list_ollama_models, ollama_route_id, select_ollama_model, speech_runtime_status, transcribe_audio
 from backend.agent_runner import (
     WorktreeInspectionError, agent_available, inspect_codex_worktree_changes, run_codex_task,
 )
@@ -72,6 +73,13 @@ app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="
 
 @app.get("/", tags=["ui"], include_in_schema=False)
 async def root():
+    """Serve the voice-first humanoid assistant as the default home screen."""
+    return FileResponse(FRONTEND_DIR / "voice.html")
+
+
+@app.get("/console", tags=["ui"], include_in_schema=False)
+async def console():
+    """Keep the advanced operator console available separately."""
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
@@ -94,7 +102,12 @@ async def health():
 @app.get("/api/v1/status", response_model=BackendStatus, tags=["system"])
 async def backend_status():
     current = get_settings()
-    if current.nebius_ready:
+    local_models = await list_ollama_models()
+    if local_models:
+        provider = "ollama-local"
+        configured_model = select_ollama_model("ollama", local_models)
+        note = "A local Ollama model is detected. FRIDAY prefers local inference and only uses configured cloud routes when no local model is installed."
+    elif current.nebius_ready:
         provider = "nebius-token-factory"
         configured_model = current.nebius_model
         note = "Nebius model configured for task planning. Eligible coding tasks can be sent to the sandboxed Codex CLI worker when installed; broader external actions remain disabled."
@@ -133,11 +146,30 @@ async def model_routes():
         "routes": [
             {
                 "id": "auto",
-                "name": "Automatic",
+                "name": "Automatic (local-first)",
                 "available": True,
                 "model": None,
-                "details": "Uses Claude Fable only for complex tasks when enabled and within budget; otherwise uses the configured Nebius or NVIDIA NIM model, then a ready named model profile, the generic OpenAI-compatible model, or the deterministic local fallback.",
+                "details": "Uses an installed Ollama model first, then explicitly configured provider routes. No fake model answer is generated.",
             },
+            {
+                "id": "ollama",
+                "name": "Ollama Local (default installed model)",
+                "provider": "ollama-local",
+                "available": bool(local_models),
+                "model": select_ollama_model("ollama", local_models),
+                "details": "Runs on the machine/container specified by OLLAMA_BASE_URL. Pull at least one model with ollama pull qwen2.5:3b.",
+            },
+            *[
+                {
+                    "id": ollama_route_id(model_name),
+                    "name": "Ollama · " + model_name,
+                    "provider": "ollama-local",
+                    "available": True,
+                    "model": model_name,
+                    "details": "Installed local Ollama model. Inference uses the local runtime and does not call a hosted AI API.",
+                }
+                for model_name in local_models
+            ],
             {
                 "id": "nebius",
                 "name": (
@@ -202,6 +234,41 @@ async def central_chat(request: ChatRequest):
             status_code=502,
             detail="The selected AI provider failed to answer. Check its model ID, quota, network access, and server logs."
         ) from exc
+
+
+@app.get("/api/v1/voice/status", tags=["voice"])
+async def voice_status():
+    """Expose safe microphone, local model, and offline speech readiness."""
+    models = await list_ollama_models()
+    speech = speech_runtime_status()
+    return {
+        "ollama_reachable": bool(models),
+        "ollama_base_url": get_settings().ollama_base_url,
+        "models": models,
+        "default_model": select_ollama_model("ollama", models),
+        "local_first": True,
+        **speech,
+    }
+
+
+@app.post("/api/v1/voice/transcribe", tags=["voice"])
+async def transcribe_voice(audio: UploadFile = File(...)):
+    """Convert a browser microphone clip to text using local Whisper, never a hosted STT API."""
+    data = await audio.read(20 * 1024 * 1024 + 1)
+    await audio.close()
+    if len(data) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio clips must be 20 MB or smaller.")
+    try:
+        result = await transcribe_audio(data, audio.filename or "friday-command.webm", get_settings().local_stt_model)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Local transcription failed. Check the offline Whisper installation and audio format.") from exc
+    if not result.get("text"):
+        raise HTTPException(status_code=422, detail="No speech was detected. Try speaking a little closer to the microphone.")
+    return {"text": result["text"], "language": result.get("language"), "engine": "faster-whisper-local"}
 
 
 @app.post("/api/v1/voice/speech", tags=["voice"])
