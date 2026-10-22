@@ -1,43 +1,71 @@
-# FRIDAY — local AI central console
+# FRIDAY — local voice assistant setup
 
-FRIDAY is the renamed user-facing assistant identity for this repository. The backend and its provider adapters remain explicit; changing the name does not magically turn every inventory item into a working agent.
+FRIDAY's default page is a voice-first humanoid interface. The microphone is activated only after you click Activate FRIDAY. It records each spoken turn, sends that audio to FRIDAY's backend for local Whisper transcription, routes the text to a real model in Ollama, and speaks the model's answer using the browser/operating-system speech voice. There is no hidden hosted speech-recognition fallback.
 
-## Run locally
+## Important: local laptop versus GitHub Codespaces
 
-1. Use Python 3.11+ and create a virtual environment.
-2. Install dependencies: `python -m pip install -r requirements.txt`.
-3. Copy `data/model-profiles.example.json` to `data/model-profiles.json`.
-4. Create `.env` in the repository root. Add a key only for a provider/account you actually have:
+A Codespace is a remote Linux machine. If you install Ollama in a Codespace, the model runs on that remote machine, not on your Windows laptop. To keep inference on your laptop, download or clone this repository onto Windows, install Ollama on Windows, and run the FRIDAY backend locally.
 
-   ```dotenv
-   SQLITE_PATH=./data/friday.db
-   MODEL_PROFILES_PATH=./data/model-profiles.json
-   SILICONFLOW_API_KEY=your_key_here
-   ```
+The API and UI work in both environments. Microphone access requires a secure context; localhost and the HTTPS URL exposed by Codespaces normally qualify in current browsers.
 
-5. Start the API/UI: `python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload`.
-6. Open `http://127.0.0.1:8000`. Use **Open FRIDAY** in the header to open the central chat console.
-7. Check `http://127.0.0.1:8000/health` and `http://127.0.0.1:8000/docs`.
+## Option A — run all model inference on your Windows laptop
 
-The sample model ID is an example, not a guarantee that a provider account currently offers that model or free inference. SiliconFlow and other providers change model availability, rate limits, trial quotas and pricing. Check the provider dashboard before relying on a free tier. A key is still required for hosted APIs; this is not equivalent to fully offline inference.
+1. Install Python 3.11 or newer and install [Ollama for Windows](https://ollama.com/download/windows).
+2. Open PowerShell in the repository folder.
+3. Run these commands:
 
-## Provider-specific routing
+    python -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
+    .\scripts\setup_local_runtime.ps1
 
-- FRIDAY chat calls the selected configured model directly through the compatible chat-completions interface.
-- Existing task planning retains its stricter JSON-plan contract and risk policy.
-- For local inference, configure an OpenAI-compatible loopback server (for example Ollama) as a named profile with `http://127.0.0.1:11434/v1`; never expose an unauthenticated local endpoint publicly.
-- Do not commit `.env`, API keys, provider tokens, or private conversation data.
+    The setup script pulls qwen2.5:1.5b by default. You can use another installed model by setting the FRIDAY_OLLAMA_MODEL environment variable before running the script. The 1.5B model is a small starting point for low-memory systems; bigger models can be smarter but need more RAM and run slower.
+4. Run the API and UI:
 
-## Architecture and integration status
+    python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 
-- **Needle:** keep its multi-parameter research/extraction role as a separately testable adapter; the archive/source is not automatically a running agent or a set of model weights.
-- **tmux:** useful for keeping a development process visible during an active machine session. tmux does not keep a stopped Codespace or powered-off computer alive, and it is not itself a reliable autonomous test supervisor.
-- **ECC skills:** imported skills remain reviewed/opt-in. Treat all skill text as untrusted input, pin hashes, and do not auto-run scripts from uploaded archives.
-- **Claude-style architecture:** FRIDAY can use a plan → act through a registered tool → observe → verify → retry-with-bounds loop. This documents a general agent pattern; it does not include Anthropic proprietary source code, model weights, or an unrestricted Claude Code clone.
-- **Video editing:** use a dedicated media pipeline adapter (probe/ingest → scene/shot analysis → edit decision list → render → validate output). Tesseract is OCR, not a video-generation model. Actual rendering requires installed media tools such as FFmpeg and separately configured models/services.
-- **REA MCP:** use only with authorization. Do not bypass app access controls, DRM, authentication, or other security boundaries. Prefer documented APIs and authorized test targets.
-- **Codex, Claude Code, Hermes, Nemotron and other providers:** inventory status is not proof of a working runtime. Each adapter needs its own auth, version checks, timeout policy, isolated workspace, tests, and explicit capabilities.
+5. Open http://127.0.0.1:8000. Allow microphone access and click Activate FRIDAY. The advanced console is at http://127.0.0.1:8000/console.
 
-## Verification
+## Option B — run inside GitHub Codespaces
 
-Run `python -m pytest -q`. A successful test suite checks repository behavior, not real external API availability. To verify live inference, configure a provider and send a small test message from the central chat console.
+Open a terminal in the Codespace and run:
+
+    python -m venv .venv
+    source .venv/bin/activate
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
+    bash scripts/setup_local_runtime.sh --voice
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+In the Ports tab, open port 8000. This downloads the model inside the Codespace; it does not use the laptop's local Ollama process. The setup step downloads Ollama's small qwen2.5:1.5b model and installs optional local Whisper transcription. Whisper model weights are fetched on the first transcription, then cached in that runtime.
+
+If the setup script needs to be rerun after a Codespace restart, repeat the model server setup step if Ollama did not remain running. If the local model is missing, check with ollama list and run ollama pull qwen2.5:1.5b.
+
+## Checks
+
+- Backend: /health
+- Local model and offline speech readiness: /api/v1/voice/status
+- Installed and configured model routes: /api/v1/models
+- Interactive API docs: /docs
+- Advanced agent / task console: /console
+
+The voice UI shows whether Ollama and Whisper are ready. It does not fake an answer: if the model is missing, offline transcription is not installed, or a provider fails, it displays the actual failure.
+
+## Add additional local models
+
+Use Ollama to download a model, then refresh FRIDAY:
+
+    ollama pull qwen2.5-coder:1.5b
+    ollama pull llama3.2:1b
+    ollama list
+
+Only tags actually returned by Ollama are offered as local model routes. Use ollama list to see exact installed tags. Model sizes and capabilities differ; verify the exact model in the [Ollama library](https://ollama.com/library) before downloading it.
+
+## Voice runtime behavior
+
+- Speech recognition: optional faster-whisper, installed from requirements-voice.txt, running locally with CPU int8 inference. The Whisper model downloads on first use if not already cached.
+- Speech output: browser/OS speechSynthesis, not ElevenLabs. This works without a hosted TTS key when the browser has an installed system voice.
+- Conversation inference: local Ollama first. When no local model is installed, automatic routing may use an explicitly configured provider; it never fabricates a model answer.
+- Skills and agents: the separate operator console retains reviewed skills and guarded Codex coding worktrees. Agent inventories are not proof of a working integration. FRIDAY does not secretly execute arbitrary shell commands, control the whole desktop, or access unrelated laptop applications from the browser.
+- API secrets belong in .env or environment secrets only. Never commit secrets or paste them into chat.
