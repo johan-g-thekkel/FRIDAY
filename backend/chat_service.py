@@ -1,4 +1,4 @@
-"""Model routing for local Ollama first, then explicitly configured provider routes.
+"""Local-only automatic routing plus explicitly selected alternative provider routes.
 
 FRIDAY never invents a model response. Local model availability is discovered from
 the Ollama runtime at request time; credentials are loaded server-side only.
