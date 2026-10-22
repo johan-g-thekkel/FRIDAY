@@ -9,7 +9,8 @@ import zipfile
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+import httpx
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -201,7 +202,38 @@ async def central_chat(request: ChatRequest):
             status_code=502,
             detail="The selected AI provider failed to answer. Check its model ID, quota, network access, and server logs."
         ) from exc
-\n\n@app.get("/api/v1/policy", tags=["system"])
+\n\n@app.post("/api/v1/voice/speech", tags=["voice"])
+async def generate_voice_speech(payload: dict):
+    """Convert assistant text to MP3 with a server-side ElevenLabs API key."""
+    current = get_settings()
+    if not current.elevenlabs_api_key:
+        raise HTTPException(status_code=503, detail="ElevenLabs is not configured. Add ELEVENLABS_API_KEY to Codespaces Secrets and restart the backend.")
+    text = payload.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise HTTPException(status_code=422, detail="A non-empty text field is required.")
+    if len(text) > 5000:
+        raise HTTPException(status_code=413, detail="Voice requests are limited to 5,000 characters.")
+    voice_id = current.elevenlabs_voice_id.strip()
+    if not voice_id or "/" in voice_id:
+        raise HTTPException(status_code=500, detail="ELEVENLABS_VOICE_ID is invalid.")
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            upstream = await client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                params={"output_format": "mp3_44100_128"},
+                headers={"xi-api-key": current.elevenlabs_api_key, "Accept": "audio/mpeg"},
+                json={"text": text.strip(), "model_id": current.elevenlabs_model_id},
+            )
+        if upstream.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"ElevenLabs returned HTTP {upstream.status_code}. Check the API key, voice ID, and quota.")
+        return Response(content=upstream.content, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
+    except HTTPException:
+        raise
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Could not reach ElevenLabs. Check server network access.") from exc
+
+
+@app.get("/api/v1/policy", tags=["system"])
 async def autonomy_policy():
     """Return TEDDY autonomy profiles and non-negotiable safeguards."""
     return public_autonomy_policy()
