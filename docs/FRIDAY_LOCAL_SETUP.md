@@ -27,6 +27,8 @@ The API and UI work in both environments. Microphone access requires a secure co
 
 5. Open http://127.0.0.1:8000. Allow microphone access and click Activate FRIDAY. The advanced console is at http://127.0.0.1:8000/console.
 
+On Windows, FRIDAY enables a small explicit local action allowlist by default: say “open Calculator”, “open Notepad”, “open File Explorer”, “open Paint”, or “open browser”. It can also open a spoken HTTP/HTTPS URL in your default browser. These commands only work when the backend runs on the laptop; arbitrary shell commands are not enabled. To disable all local app launches, set FRIDAY_ENABLE_LOCAL_DESKTOP_ACTIONS=false in the environment before starting FRIDAY.
+
 ## Option B — run inside GitHub Codespaces
 
 Open a terminal in the Codespace and run:
@@ -67,5 +69,5 @@ Only tags actually returned by Ollama are offered as local model routes. Use oll
 - Speech recognition: optional faster-whisper, installed from requirements-voice.txt, running locally with CPU int8 inference. The selected Whisper model (tiny by default for memory-constrained machines) downloads on first use if not already cached.
 - Speech output: browser/OS speechSynthesis, not ElevenLabs. This works without a hosted TTS key when the browser has an installed system voice.
 - Conversation inference: automatic voice mode is strictly local Ollama. If no model is installed, FRIDAY stops with setup instructions instead of hidden cloud fallback. Cloud routes remain optional and must be selected explicitly through the advanced API.
-- Skills and agents: the separate operator console retains reviewed skills and guarded Codex coding worktrees. Agent inventories are not proof of a working integration. FRIDAY does not secretly execute arbitrary shell commands, control the whole desktop, or access unrelated laptop applications from the browser.
+- Skills and agents: the separate operator console retains reviewed skills and guarded Codex coding worktrees. Agent inventories are not proof of a working integration. FRIDAY's local voice actions are deliberately limited to explicit allowlisted app launches and opening a URL. They do not mean arbitrary shell access, unrestricted desktop control, or automatic control of other applications.
 - API secrets belong in .env or environment secrets only. Never commit secrets or paste them into chat.
