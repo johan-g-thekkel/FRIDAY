@@ -202,7 +202,9 @@ async def central_chat(request: ChatRequest):
             status_code=502,
             detail="The selected AI provider failed to answer. Check its model ID, quota, network access, and server logs."
         ) from exc
-\n\n@app.post("/api/v1/voice/speech", tags=["voice"])
+
+
+@app.post("/api/v1/voice/speech", tags=["voice"])
 async def generate_voice_speech(payload: dict):
     """Convert assistant text to MP3 with a server-side ElevenLabs API key."""
     current = get_settings()
