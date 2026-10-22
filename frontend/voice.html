@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070b16">
+  <meta name="description" content="FRIDAY local-first voice assistant">
+  <title>FRIDAY — Voice Core</title>
+  <link rel="stylesheet" href="/static/voice.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="wordmark" href="/" aria-label="FRIDAY voice core home"><span class="wordmark-mark">F</span><span>FRIDAY<small>PERSONAL INTELLIGENCE</small></span></a>
+    <div class="connection"><span class="status-led" id="backend-led"></span><span id="backend-status">Checking backend…</span></div>
+    <a class="console-link" href="/console">Operator console <span aria-hidden="true">↗</span></a>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <div class="eyebrow"><span class="eyebrow-rule"></span> VOICE CORE / LOCAL-FIRST</div>
+      <h1>I'm here.<br><span>Speak naturally.</span></h1>
+      <p class="intro-copy">Tell FRIDAY what you need. It listens, transcribes on the local runtime, sends your request to a real model, and speaks the answer back.</p>
+    </section>
+
+    <section class="presence" aria-label="FRIDAY humanoid presence">
+      <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div>
+      <div class="core-glow"></div>
+      <div class="humanoid" id="humanoid" aria-hidden="true">
+        <svg viewBox="0 0 240 270" role="img" aria-label="Abstract holographic humanoid face">
+          <defs>
+            <linearGradient id="faceStroke" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#b7fbff"/><stop offset=".48" stop-color="#8a8cff"/><stop offset="1" stop-color="#55d9ff"/>
+            </linearGradient>
+            <radialGradient id="faceFill" cx=".5" cy=".3" r=".8">
+              <stop offset="0" stop-color="#303d70" stop-opacity=".9"/><stop offset="1" stop-color="#0b1329" stop-opacity=".95"/>
+            </radialGradient>
+            <filter id="softGlow"><feGaussianBlur stdDeviation="3.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <path d="M69 65 Q120 24 171 65 L183 118 L171 183 Q159 223 120 231 Q81 223 69 183 L57 118 Z" fill="url(#faceFill)" stroke="url(#faceStroke)" stroke-width="2.2" filter="url(#softGlow)"/>
+          <path d="M60 103 L37 91 L37 145 L63 137 M180 103 L203 91 L203 145 L177 137" fill="none" stroke="url(#faceStroke)" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M76 83 Q120 58 164 83" fill="none" stroke="#9aabff" stroke-opacity=".7" stroke-width="1.6"/>
+          <path d="M82 120 Q98 108 109 120" fill="none" stroke="#bdfaff" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M131 120 Q142 108 158 120" fill="none" stroke="#bdfaff" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M120 119 L115 153 L124 157" fill="none" stroke="#7fe7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="face-mouth" d="M94 181 Q120 194 146 181" fill="none" stroke="#c5aaff" stroke-width="3" stroke-linecap="round"/>
+          <path d="M90 204 Q120 218 150 204" fill="none" stroke="#718cf4" stroke-opacity=".7" stroke-width="1.6"/>
+          <circle cx="120" cy="42" r="4" fill="#d8fbff"/>
+          <path d="M120 13 V30 M120 238 V257 M25 167 H47 M193 167 H215" stroke="#7bdfff" stroke-opacity=".7" stroke-width="1.5"/>
+          <circle cx="120" cy="8" r="2.5" fill="#72e4ff"/><circle cx="120" cy="263" r="2.5" fill="#a59bff"/>
+        </svg>
+      </div>
+      <div class="presence-caption"><span class="presence-dot"></span><span id="presence-caption">STANDBY · READY WHEN YOU ARE</span></div>
+    </section>
+
+    <section class="interaction" aria-label="Voice controls">
+      <div class="listening-ring" id="listening-ring">
+        <button class="activate-button" id="activate-button" type="button" aria-describedby="voice-help">
+          <span class="mic-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"></path></svg></span>
+          <span id="activate-label">Activate FRIDAY</span>
+        </button>
+      </div>
+      <p class="voice-help" id="voice-help">Tap once to enable the microphone. Speak a sentence, then pause; FRIDAY will answer aloud.</p>
+      <button class="stop-button" id="stop-button" type="button" hidden>End voice session</button>
+      <div class="live-state" aria-live="polite"><span class="state-dot" id="voice-led"></span><span id="voice-status">Voice session is off</span></div>
+    </section>
+
+    <section class="response-panel" aria-live="polite" aria-label="Conversation">
+      <div class="response-top"><span class="response-label">LIVE TRANSCRIPT</span><span id="turn-count">NO TURNS YET</span></div>
+      <p id="transcript" class="transcript muted">Your spoken request will appear here.</p>
+      <div class="response-divider"></div>
+      <div class="response-top"><span class="response-label">FRIDAY RESPONSE</span><span id="response-source">AWAITING VOICE</span></div>
+      <p id="response" class="response-text muted">The answer from your selected model will appear here and be spoken aloud.</p>
+    </section>
+
+    <footer class="runtime-footer">
+      <div class="runtime-item"><span class="runtime-symbol">◉</span><span><small>MODEL RUNTIME</small><strong id="model-status">Checking Ollama…</strong></span></div>
+      <div class="runtime-item"><span class="runtime-symbol">⌁</span><span><small>OFFLINE SPEECH</small><strong id="speech-status">Checking Whisper…</strong></span></div>
+      <details class="model-details" id="model-details">
+        <summary>Local model</summary>
+        <select id="model-select" aria-label="Choose installed local model"><option value="auto">Automatic (local-first)</option></select>
+      </details>
+    </footer>
+    <p class="privacy-note">Local mode uses the model server and Whisper runtime configured with FRIDAY. Microphone audio is sent to this backend for local transcription; it is not sent to a hosted speech API by FRIDAY. Browser speech synthesis is used to speak answers.</p>
+  </main>
+  <script src="/static/voice.js" defer></script>
+</body>
+</html>
