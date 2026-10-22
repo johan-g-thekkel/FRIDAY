@@ -124,25 +124,12 @@ async def chat_completion(messages: list[dict[str, str]], requested_route: str =
         return await _ollama_completion(messages, route)
 
     if route == "auto":
-        available_profiles = [profile for profile in profiles if profile.get("available")]
-        if available_profiles:
-            selected = available_profiles[0]
-            return await _openai_compatible_completion(
-                messages,
-                provider="profile:" + selected["id"],
-                base_url=selected["base_url"],
-                api_key=selected["_api_key"] or "",
-                model=selected["model"],
-            )
-        if settings.nebius_ready:
-            return await _configured_cloud_route(messages, "nebius")
-        if settings.nvidia_ready:
-            return await _configured_cloud_route(messages, "nvidia_nim")
-        if settings.openai_compatible_ready:
-            return await _configured_cloud_route(messages, "openai_compatible")
+        # Default auto is deliberately local-only to respect FRIDAY's closed-environment mode.
+        # Cloud providers remain accessible only through explicit route selection.
         raise ChatRouteUnavailable(
-            "No live AI model is available yet. For local-first mode, install Ollama in the same runtime "
-            "as FRIDAY and pull a model with ollama pull qwen2.5:3b. Otherwise configure a provider key."
+            "No local Ollama model is available. FRIDAY automatic mode is local-only: start Ollama "
+            "in this same runtime, then run ollama pull qwen2.5:1.5b. Cloud providers are never used "
+            "as a hidden fallback; select one explicitly through an authorized integration if needed."
         )
 
     if route in {"nebius", "nvidia_nim", "openai_compatible"}:
