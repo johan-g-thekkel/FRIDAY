@@ -32,7 +32,7 @@ The initial backend is now in the repository:
 - tmux development launcher for supervising the API terminal and a shell
 - An opt-in Codex CLI worker can execute eligible coding tasks in an isolated Git worktree; broad shell, IoT, messaging and deployment actions remain disabled
 
-This is a working **operator prototype**: the task planner, saved task lifecycle, command-centre UI, and an opt-in Codex coding worker are present. It does not send messages, control devices, use a webcam, or automatically merge agent changes.
+This is an operator prototype, not yet a full desktop agent. The task planner, saved task lifecycle, command-centre UI, and an opt-in Codex coding worker are present. On a Windows machine running the backend locally, exact voice commands can open Calculator, Notepad, File Explorer, Paint, the default browser, or an explicitly spoken HTTP/HTTPS URL. These actions use a fixed allowlist; FRIDAY does not run arbitrary shell text, control devices, or automatically merge agent changes.
 
 ## Run in GitHub Codespaces
 
