@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # Local-first Ollama. A model must be pulled into this runtime before it is usable.
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen2.5:1.5b"
-    local_stt_model: str = "base"
+    local_stt_model: str = "tiny"
 
     nebius_api_key: str | None = None
     nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1"
