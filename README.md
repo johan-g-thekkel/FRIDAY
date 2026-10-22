@@ -2,19 +2,21 @@
 
 **FRIDAY** is a personal AI operator prototype for the Nebius Global AI Hackathon. The intended product combines a minimal command-centre UI, model routing, specialized Bots, policy-controlled tools, and a verified coding loop.
 
-## Command-centre UI
+## Voice-first home UI
 
-The web UI is served directly by FastAPI at `/` (CSS and JavaScript under `/static`). In Codespaces, open the forwarded port 8000 to use the command centre; no separate npm/Vite server is required. It loads `/health`, `/api/v1/status`, `/api/v1/models`, `/api/v1/integrations`, `/api/v1/skills`, `/api/v1/tasks`, and `/api/v1/bots`, then polls for updates every eight seconds while the tab is visible. Task submission creates a persisted plan and task history entry. The Bot Studio creates, edits, enables/disables, and deletes local Bot profiles with role instructions, notes, model-route defaults, runtime choice, and reviewed skills; a selected Bot's data is attached as untrusted context to task planning and optional coding runs. The Skills Library accepts supported ZIP uploads and imports canonical `SKILL.md` metadata only; uploaded code, scripts, and binaries are never executed.
+FRIDAY opens directly into a voice-first humanoid interface at /. Click Activate FRIDAY once to grant microphone permission; it detects a spoken phrase, uses local Whisper to transcribe the phrase, calls the selected real model, speaks the answer through the browser/OS voice, and resumes listening. The interface has no typing box on the home screen. The advanced dashboard remains at /console.
 
-**Execution boundary:** planning is always available. Eligible coding tasks can additionally be submitted to the Codex CLI worker when the `codex` executable is installed and authenticated. Each run uses a detached Git worktree and Codex `workspace-write` sandbox, has a bounded timeout, records event metadata, and retains the worktree for human review. TEDDY does not auto-merge, push, deploy, or run non-coding tasks through this worker. Hermes and Claude Code remain inventory-only until separate, tested adapters are provided. Skills can be reviewed and explicitly approved in the Skills Library UI or through the guarded CLI. The UI displays the actual untrusted document, requires an acknowledgement plus an exact `ENABLE SKILL_ID` phrase, and pins its full SHA-256; if the file changes, it becomes unapproved again.
+FRIDAY's main API, UI, SQLite history, and local inference adapter are served from FastAPI on port 8000. The voice readiness endpoint /api/v1/voice/status reports whether the backend can reach Ollama and whether the optional offline speech package is installed. UI status is based on real API results, not a decorative loading indicator.
+
+## Model routing
+
+Chat routes try a real Ollama model first when one is installed, then an explicitly configured model profile or cloud provider. /api/v1/models lists the installed local Ollama tags and configured routes. Missing models and failed providers produce an error rather than a fabricated answer. Local model weights must be downloaded separately; no model weights are bundled into Git.
 
 ## Voice input and spoken replies
 
-FRIDAY central chat includes an optional ElevenLabs text-to-speech endpoint and a browser microphone dictation button. The ElevenLabs key is only read by the backend; it is never sent to the browser.
+Offline speech input uses faster-whisper, installed separately with python -m pip install -r requirements-voice.txt. The selected Whisper weights download on the first transcription and are then cached in the runtime. Speech output uses browser/OS speechSynthesis by default, so no ElevenLabs key is required. The microphone starts only after the user activates the session; audio clips are sent to FRIDAY's backend for local transcription and are not sent to a hosted speech-to-text service by FRIDAY.
 
-In GitHub Codespaces, add a Codespaces secret named `ELEVENLABS_API_KEY` with your key from the [ElevenLabs dashboard](https://elevenlabs.io/app/settings/api-keys). Optionally set `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL_ID` (defaults: `JBFqnCBsd6RMkjVDRZzb` and `eleven_flash_v2_5`). Restart the Codespace after adding a secret. The chat shows a **Listen** button under assistant replies when voice is configured.
-
-The **Dictate** button uses browser speech recognition where supported and requires microphone permission. Wispr Flow is a separate desktop/mobile dictation app, not a live microphone API embedded in this website: install/open Wispr Flow, focus FRIDAY's message field, then use your configured Wispr Flow hotkey to dictate directly into it. Review transcripts before sending.
+ElevenLabs remains an optional older endpoint at POST /api/v1/voice/speech, but it is not required by the voice-first home screen. Wispr Flow is an independent desktop dictation app and is not embedded as a website microphone API.
 
 ## Backend status
 
@@ -34,23 +36,18 @@ This is a working **operator prototype**: the task planner, saved task lifecycle
 
 ## Run in GitHub Codespaces
 
-Open the repository in GitHub Codespaces, then run in the terminal:
+Open the repository in GitHub Codespaces, then run:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-```
+    python -m venv .venv
+    source .venv/bin/activate
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
+    bash scripts/setup_local_runtime.sh --voice
+    python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
-In Codespaces, open the **Ports** tab and open port **8000** in your browser. FastAPI's interactive API explorer is at `/docs`.
+In the Ports tab, open forwarded port 8000. The voice-first app is at /; the advanced console is at /console; FastAPI docs are at /docs.
 
-On Windows PowerShell (if running outside Codespaces), activate the environment with:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+Codespaces clarification: this runs Ollama and its model weights in the remote Codespace, not on your laptop. For truly laptop-local inference, clone or download this repository to Windows, install Ollama on Windows, run scripts/setup_local_runtime.ps1, then start FRIDAY locally at http://127.0.0.1:8000. See docs/FRIDAY_LOCAL_SETUP.md for both options.
 
 ## Quick test
 
