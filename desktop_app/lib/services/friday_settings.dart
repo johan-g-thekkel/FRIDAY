@@ -65,7 +65,9 @@ class FridaySettings {
   }
 
   static String _string(Object? value, String fallback) {
-    if (value is! String || value.trim().isEmpty) return fallback;
+    if (value is! String || value.trim().isEmpty) {
+      return fallback;
+    }
     return value.trim();
   }
 }
@@ -81,9 +83,13 @@ class FridaySettingsStore {
   static Future<FridaySettings> load() async {
     try {
       final file = await _file();
-      if (!await file.exists()) return const FridaySettings();
+      if (!await file.exists()) {
+        return const FridaySettings();
+      }
       final decoded = jsonDecode(await file.readAsString());
-      if (decoded is Map<String, dynamic>) return FridaySettings.fromJson(decoded);
+      if (decoded is Map<String, dynamic>) {
+        return FridaySettings.fromJson(decoded);
+      }
     } catch (_) {
       // Corrupt or absent settings are recovered with safe local defaults.
     }
