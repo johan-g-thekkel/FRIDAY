@@ -104,4 +104,8 @@ if (-not $SkipFlutter) {
 
 Write-Host ""
 Write-Host "Setup complete." -ForegroundColor Green
-Write-Host "Next: .\scripts\run_friday_windows.ps1"
+if ($SkipFlutter) {
+    Write-Host "Next: .\scripts\run_friday_portable.ps1"
+} else {
+    Write-Host "Next: .\scripts\run_friday_windows.ps1"
+}
