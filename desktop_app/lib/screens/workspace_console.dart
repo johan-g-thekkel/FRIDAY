@@ -130,6 +130,7 @@ class _WorkspaceConsoleState extends State<WorkspaceConsole> {
     final prompt = TextEditingController();
     String route = 'auto';
     String? botId;
+    final Set<String> selectedSkills = {};
     final created = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
@@ -163,6 +164,27 @@ class _WorkspaceConsoleState extends State<WorkspaceConsole> {
               }).toList(),
               onChanged: (value) => setDialogState(() => route = value ?? 'auto'),
             ),
+            if (_skills.any((s) => s['status'] == 'enabled_reviewed')) ...[
+              const SizedBox(height: 12),
+              const Text('Approved skills (optional; max 5)', style: TextStyle(color: _muted, fontSize: 12)),
+              ..._skills.where((s) => s['status'] == 'enabled_reviewed').map((skill) {
+                final id = skill['id']?.toString() ?? '';
+                return CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: selectedSkills.contains(id),
+                  title: Text((skill['name'] ?? id).toString()),
+                  subtitle: Text((skill['description'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  onChanged: (checked) => setDialogState(() {
+                    if (checked == true && selectedSkills.length < 5) {
+                      selectedSkills.add(id);
+                    } else if (checked != true) {
+                      selectedSkills.remove(id);
+                    }
+                  }),
+                );
+              }),
+            ],
             const SizedBox(height: 8),
             const Text('Creating a task makes a plan only. Running code is a separate, guarded action.', style: TextStyle(color: _muted, fontSize: 11)),
           ])),
@@ -171,7 +193,7 @@ class _WorkspaceConsoleState extends State<WorkspaceConsole> {
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
           FilledButton.icon(onPressed: () {
             if (prompt.text.trim().isEmpty) return;
-            Navigator.pop(dialogContext, {'prompt': prompt.text.trim(), 'model_route': route, if (botId != null) 'bot_id': botId});
+            Navigator.pop(dialogContext, {'prompt': prompt.text.trim(), 'model_route': route, 'skill_ids': selectedSkills.toList(), if (botId != null) 'bot_id': botId});
           }, icon: const Icon(Icons.playlist_add), label: const Text('Create plan')),
         ],
       )),
@@ -238,6 +260,7 @@ class _WorkspaceConsoleState extends State<WorkspaceConsole> {
     final memory = TextEditingController(text: bot?['memory']?.toString() ?? '');
     var route = bot?['default_model_route']?.toString() ?? 'auto';
     var runtime = bot?['runtime']?.toString() ?? 'plan_only';
+    final Set<String> selectedSkills = _strings(bot?['skill_ids']).toSet();
     final saved = await showDialog<Map<String, dynamic>>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
       title: Text(bot == null ? 'Create bot profile' : 'Edit ${bot['name']}'),
       content: SizedBox(width: 580, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -265,6 +288,28 @@ class _WorkspaceConsoleState extends State<WorkspaceConsole> {
           ],
           onChanged: (value) => setDialogState(() => runtime = value ?? 'plan_only'),
         ),
+        if (_skills.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Attach reviewed skills', style: TextStyle(color: _muted, fontSize: 12)),
+          ..._skills.where((s) => s['status'] == 'enabled_reviewed' || selectedSkills.contains(s['id']?.toString())).map((skill) {
+            final id = skill['id']?.toString() ?? '';
+            final reviewed = skill['status'] == 'enabled_reviewed';
+            return CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              value: selectedSkills.contains(id),
+              title: Text((skill['name'] ?? id).toString()),
+              subtitle: Text(reviewed ? 'Approved' : 'No longer approved — unselect it before saving', style: TextStyle(color: reviewed ? _muted : const Color(0xFFFFC17B), fontSize: 11)),
+              onChanged: reviewed || selectedSkills.contains(id) ? (checked) => setDialogState(() {
+                if (checked == true && selectedSkills.length < 5) {
+                  selectedSkills.add(id);
+                } else if (checked != true) {
+                  selectedSkills.remove(id);
+                }
+              }) : null,
+            );
+          }),
+        ],
         const SizedBox(height: 8),
         const Text('Saving a profile does not launch an agent. Codex dispatch still requires the authenticated CLI and backend safeguards.', style: TextStyle(color: _muted, fontSize: 11)),
       ]))),
@@ -277,7 +322,7 @@ class _WorkspaceConsoleState extends State<WorkspaceConsole> {
             'instructions': instructions.text.trim(), 'memory': memory.text.trim(),
             'default_model_route': route, 'runtime': runtime,
             'enabled': bot == null ? true : bot['enabled'] == true,
-            'skill_ids': _strings(bot?['skill_ids']),
+            'skill_ids': selectedSkills.toList(),
           });
         }, icon: const Icon(Icons.save_outlined), label: const Text('Save bot')),
       ],
