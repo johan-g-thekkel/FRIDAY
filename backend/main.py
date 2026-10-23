@@ -9,9 +9,8 @@ import zipfile
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 import httpx
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import claim_task_for_agent, create_bot, delete_bot, fail_interrupted_agent_tasks, get_bot, get_task, init_db, insert_task, list_bots, list_tasks, update_bot, update_task, utc_now
@@ -46,7 +45,6 @@ async def lifespan(_: FastAPI):
 
 
 settings = get_settings()
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 app = FastAPI(
     title="FRIDAY API",
@@ -67,21 +65,17 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
-# Serve the command-centre UI from the same origin as the API. This keeps
-# Codespaces setup simple and avoids exposing API credentials to browser code.
-app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR / "static")), name="static")
-
-
-@app.get("/", tags=["ui"], include_in_schema=False)
+@app.get("/", tags=["system"], include_in_schema=False)
 async def root():
-    """Serve the voice-first humanoid assistant as the default home screen."""
-    return FileResponse(FRONTEND_DIR / "voice.html")
-
-
-@app.get("/console", tags=["ui"], include_in_schema=False)
-async def console():
-    """Keep the advanced operator console available separately."""
-    return FileResponse(FRONTEND_DIR / "index.html")
+    """API landing route for the native Flutter desktop client."""
+    return {
+        "name": "FRIDAY",
+        "type": "native-desktop-backend",
+        "message": "FRIDAY API is running. Launch the Flutter client from desktop_app.",
+        "health": "/health",
+        "docs": "/docs",
+        "voice_status": "/api/v1/voice/status",
+    }
 
 
 @app.get("/api", tags=["system"])
