@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 class FridaySettings {
   const FridaySettings({
     this.apiBaseUrl = 'http://127.0.0.1:8000',
+    this.ollamaBaseUrl = 'http://127.0.0.1:11434',
     this.backendProjectPath = '',
     this.autoStartBackend = true,
     this.modelRoute = 'auto',
@@ -14,6 +15,7 @@ class FridaySettings {
   });
 
   final String apiBaseUrl;
+  final String ollamaBaseUrl;
   final String backendProjectPath;
   final bool autoStartBackend;
   final String modelRoute;
@@ -22,6 +24,7 @@ class FridaySettings {
 
   FridaySettings copyWith({
     String? apiBaseUrl,
+    String? ollamaBaseUrl,
     String? backendProjectPath,
     bool? autoStartBackend,
     String? modelRoute,
@@ -30,6 +33,7 @@ class FridaySettings {
   }) {
     return FridaySettings(
       apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
+      ollamaBaseUrl: ollamaBaseUrl ?? this.ollamaBaseUrl,
       backendProjectPath: backendProjectPath ?? this.backendProjectPath,
       autoStartBackend: autoStartBackend ?? this.autoStartBackend,
       modelRoute: modelRoute ?? this.modelRoute,
@@ -40,6 +44,7 @@ class FridaySettings {
 
   Map<String, Object?> toJson() => {
         'api_base_url': apiBaseUrl,
+        'ollama_base_url': ollamaBaseUrl,
         'backend_project_path': backendProjectPath,
         'auto_start_backend': autoStartBackend,
         'model_route': modelRoute,
@@ -50,6 +55,7 @@ class FridaySettings {
   factory FridaySettings.fromJson(Map<String, dynamic> json) {
     return FridaySettings(
       apiBaseUrl: _string(json['api_base_url'], 'http://127.0.0.1:8000'),
+      ollamaBaseUrl: _string(json['ollama_base_url'], 'http://127.0.0.1:11434'),
       backendProjectPath: _string(json['backend_project_path'], ''),
       autoStartBackend: json['auto_start_backend'] is bool ? json['auto_start_backend'] as bool : true,
       modelRoute: _string(json['model_route'], 'auto'),
