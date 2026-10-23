@@ -1,4 +1,4 @@
-name: TEDDY backend tests
+name: FRIDAY backend API tests
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 # Keep the latest branch state tested instead of queueing every rapid update.
 concurrency:
-  group: teddy-tests-${{ github.workflow }}-${{ github.ref }}
+  group: friday-api-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,11 +31,6 @@ jobs:
 
       - name: Check backend Python syntax
         run: python -m py_compile backend/*.py
-
-      - name: Check frontend JavaScript syntax
-        run: |
-          node --check frontend/static/app.js
-          node --check frontend/static/voice.js
 
       - name: Run tests
         run: pytest -q
