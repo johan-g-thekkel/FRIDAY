@@ -70,7 +70,7 @@ class _HolographicOrbState extends State<HolographicOrb> with SingleTickerProvid
                       BoxShadow(color: glow.withValues(alpha: active ? .35 : .19), blurRadius: active ? 56 : 34, spreadRadius: active ? 8 : 2),
                     ],
                   ),
-                  child: CustomPaint(painter: _FacePainter(color: glow, speaking: speaking)),
+                  child: CustomPaint(painter: _FacePainter(color: glow, speaking: speaking, phase: _controller.value * math.pi * 2)),
                 ),
               ),
             ),
@@ -124,9 +124,10 @@ class _OrbPainter extends CustomPainter {
 }
 
 class _FacePainter extends CustomPainter {
-  _FacePainter({required this.color, required this.speaking});
+  _FacePainter({required this.color, required this.speaking, required this.phase});
   final Color color;
   final bool speaking;
+  final double phase;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -154,7 +155,7 @@ class _FacePainter extends CustomPainter {
     final mouth = Path()..moveTo(w * .37, h * .76);
     if (speaking) {
       mouth.quadraticBezierTo(w * .5, h * (.79 + .04 * math.sin(DateTime.now().millisecondsSinceEpoch / 90)), w * .63, h * .76);
-      canvas.drawOval(Rect.fromCenter(center: Offset(w * .5, h * .76), width: w * .23, height: h * .045), Paint()..color = color.withValues(alpha: .75));
+      canvas.drawOval(Rect.fromCenter(center: Offset(w * .5, h * .76), width: w * .23, height: h * (.025 + ((math.sin(phase * 8) + 1) / 2) * .07)), Paint()..color = color.withValues(alpha: .75));
     } else {
       mouth.quadraticBezierTo(w * .5, h * .81, w * .63, h * .76);
       canvas.drawPath(mouth, Paint()..color = const Color(0xFFD4B9FF)..style = PaintingStyle.stroke..strokeWidth = 2.3..strokeCap = StrokeCap.round);
@@ -162,5 +163,5 @@ class _FacePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _FacePainter oldDelegate) => oldDelegate.color != color || oldDelegate.speaking != speaking;
+  bool shouldRepaint(covariant _FacePainter oldDelegate) => oldDelegate.color != color || oldDelegate.speaking != speaking || oldDelegate.phase != phase;
 }
