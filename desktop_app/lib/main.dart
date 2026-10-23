@@ -129,12 +129,16 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   }
 
   void _setStateSafe(VoidCallback fn) {
-    if (mounted && !_disposed) setState(fn);
+    if (mounted && !_disposed) {
+      setState(fn);
+    }
   }
 
   void _log(String text) {
     _events.insert(0, '${TimeOfDay.now().format(context)}  $text');
-    if (_events.length > 18) _events.removeLast();
+    if (_events.length > 18) {
+      _events.removeLast();
+    }
   }
 
   Future<void> _initialize() async {
@@ -171,7 +175,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                 : 'Ready for a voice session';
       });
       _log('Connected to ${_settings.apiBaseUrl}');
-      if (_installedModels.isNotEmpty) _log('Found ${_installedModels.length} local model(s)');
+      if (_installedModels.isNotEmpty) {
+        _log('Found ${_installedModels.length} local model(s)');
+      }
     } catch (error) {
       _setStateSafe(() {
         _backendReady = false;
@@ -230,7 +236,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   }
 
   Future<void> _beginRecording() async {
-    if (!_voiceSession || _processingTurn || _disposed) return;
+    if (!_voiceSession || _processingTurn || _disposed) {
+      return;
+    }
     final temp = await getTemporaryDirectory();
     final path = '${temp.path}${Platform.pathSeparator}friday-${DateTime.now().microsecondsSinceEpoch}.wav';
     _activeRecordingPath = path;
@@ -264,7 +272,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   }
 
   void _onAmplitude(Amplitude amplitude) {
-    if (!_voiceSession || _processingTurn) return;
+    if (!_voiceSession || _processingTurn) {
+      return;
+    }
     final now = DateTime.now();
     // RMS-style dB threshold: reduce sensitivity slightly for room noise.
     if (amplitude.current > -43.0) {
@@ -291,7 +301,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   }
 
   Future<void> _finishRecordingAndProcess() async {
-    if (!_voiceSession || _processingTurn) return;
+    if (!_voiceSession || _processingTurn) {
+      return;
+    }
     _processingTurn = true;
     _speechDetected = false;
     await _amplitudeSubscription?.cancel();
@@ -310,7 +322,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
         return;
       }
       final transcription = await _backend!.transcribeAudio(path);
-      if (!_voiceSession) return;
+      if (!_voiceSession) {
+        return;
+      }
       final transcript = (transcription['text'] ?? '').toString().trim();
       if (transcript.isEmpty) {
         _setStateSafe(() => _status = 'No clear speech detected. Try speaking closer to the microphone.');
@@ -324,12 +338,18 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       _messages.add({'role': 'user', 'content': transcript});
       while (_messages.length > 20) {
         _messages.removeAt(0);
-        if (_messages.isNotEmpty && _messages.first['role'] == 'assistant') _messages.removeAt(0);
+        if (_messages.isNotEmpty && _messages.first['role'] == 'assistant') {
+            _messages.removeAt(0);
+          }
       }
       final response = await _backend!.chat(_messages, modelRoute: _settings.modelRoute);
-      if (!_voiceSession) return;
+      if (!_voiceSession) {
+        return;
+      }
       final answer = (response['answer'] ?? '').toString().trim();
-      if (answer.isEmpty) throw const BackendException('The model returned an empty answer.');
+      if (answer.isEmpty) {
+        throw const BackendException('The model returned an empty answer.');
+      }
       final assistantMessage = <String, String>{'role': 'assistant', 'content': answer};
       _messages.add(assistantMessage);
       _setStateSafe(() {
@@ -355,7 +375,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       if (path != null) {
         try {
           final file = File(path);
-          if (await file.exists()) await file.delete();
+          if (await file.exists()) {
+            await file.delete();
+          }
         } catch (_) {}
       }
       _processingTurn = false;
@@ -391,14 +413,20 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
     await _amplitudeSubscription?.cancel();
     _amplitudeSubscription = null;
     final unfinishedPath = _processingTurn ? null : _activeRecordingPath;
-    if (!_processingTurn) _activeRecordingPath = null;
+    if (!_processingTurn) {
+      _activeRecordingPath = null;
+    }
     try {
-      if (await _recorder.isRecording()) await _recorder.stop();
+      if (await _recorder.isRecording()) {
+        await _recorder.stop();
+      }
     } catch (_) {}
     if (unfinishedPath != null) {
       try {
         final unfinished = File(unfinishedPath);
-        if (await unfinished.exists()) await unfinished.delete();
+        if (await unfinished.exists()) {
+          await unfinished.delete();
+        }
       } catch (_) {}
     }
     await _tts.stop();
@@ -430,7 +458,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                 ]
               : _routes;
           final routeIds = availableRoutes.map((r) => r['id']?.toString()).whereType<String>().toSet();
-          if (!routeIds.contains(modelRoute)) modelRoute = 'auto';
+          if (!routeIds.contains(modelRoute)) {
+            modelRoute = 'auto';
+          }
           return AlertDialog(
             backgroundColor: const Color(0xFF111A30),
             title: const Text('FRIDAY connection settings', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -458,7 +488,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                         tooltip: 'Choose repository folder',
                         onPressed: () async {
                           final chosen = await getDirectoryPath(confirmButtonText: 'Use this FRIDAY folder');
-                          if (chosen != null) pathController.text = chosen;
+                          if (chosen != null) {
+                            pathController.text = chosen;
+                          }
                         },
                         icon: const Icon(Icons.drive_folder_upload_outlined),
                       ),
@@ -467,7 +499,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                     const Text('Model route', style: TextStyle(color: _muted, fontSize: 12)),
                     const SizedBox(height: 7),
                     DropdownButtonFormField<String>(
-                      value: routeIds.contains(modelRoute) ? modelRoute : 'auto',
+                      initialValue: routeIds.contains(modelRoute) ? modelRoute : 'auto',
                       isExpanded: true,
                       decoration: const InputDecoration(prefixIcon: Icon(Icons.hub_outlined)),
                       items: availableRoutes.map((route) {
@@ -497,7 +529,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                     const Text('Voice language', style: TextStyle(color: _muted, fontSize: 12)),
                     const SizedBox(height: 7),
                     DropdownButtonFormField<String>(
-                      value: locale,
+                      initialValue: locale,
                       decoration: const InputDecoration(prefixIcon: Icon(Icons.record_voice_over_outlined)),
                       items: const [
                         DropdownMenuItem(value: 'en-IN', child: Text('English (India)')),
@@ -524,7 +556,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
     );
     if (folders == true) {
       var api = apiController.text.trim();
-      if (!api.startsWith('http://') && !api.startsWith('https://')) api = 'http://$api';
+      if (!api.startsWith('http://') && !api.startsWith('https://')) {
+        api = 'http://$api';
+      }
       _settings = _settings.copyWith(
         apiBaseUrl: api,
         ollamaBaseUrl: ollamaController.text.trim(),
@@ -544,7 +578,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
 
   Future<void> _showDiagnostics() async {
     final settingsPath = await FridaySettingsStore.settingsPath();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -572,7 +608,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
           TextButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: settingsPath));
-              if (context.mounted) Navigator.pop(context);
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
             },
             icon: const Icon(Icons.copy),
             label: const Text('Copy settings path'),
@@ -584,7 +622,9 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   }
 
   void _showMessage(String message) {
-    if (!mounted || _disposed) return;
+    if (!mounted || _disposed) {
+      return;
+    }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
@@ -1021,8 +1061,12 @@ class _StageGridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = const Color(0xFF6F91CB).withValues(alpha: .06)..strokeWidth = .65;
     const step = 28.0;
-    for (var x = 0.0; x <= size.width; x += step) canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    for (var y = 0.0; y <= size.height; y += step) canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    for (var x = 0.0; x <= size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (var y = 0.0; y <= size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
   }
 
   @override
