@@ -21,6 +21,14 @@ To skip the model download:
 
     .\scripts\setup_friday_windows.ps1 -SkipModelDownload
 
+## Using the prebuilt Windows package
+
+The GitHub Actions workflow produces a `friday-windows-portable` artifact with the native release files, backend code and setup scripts. Download and extract that artifact, then run PowerShell in the extracted folder:
+
+    .\scripts\run_friday_portable.ps1 -InstallOllama
+
+This launch route does not require the Flutter SDK because the Windows executable is already built. Python 3.11+ is required; the first run installs Python dependencies and local speech/model weights. The model and Whisper cache then support offline inference and transcription. No model weights or credentials are bundled.
+
 ## Settings and connections
 
 The connection service lives under `lib/services/`:
