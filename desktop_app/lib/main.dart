@@ -10,6 +10,7 @@ import 'package:record/record.dart';
 
 import 'services/friday_backend.dart';
 import 'services/friday_settings.dart';
+import 'screens/workspace_console.dart';
 import 'widgets/holographic_orb.dart';
 
 const _ink = Color(0xFF080C18);
@@ -741,6 +742,15 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
           ]),
         ),
         const SizedBox(width: 10),
+        IconButton(
+          tooltip: 'Tasks, bots, skills and connections',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => WorkspaceConsole(apiBaseUrl: _settings.apiBaseUrl),
+            ),
+          ),
+          icon: const Icon(Icons.dashboard_customize_outlined),
+        ),
         IconButton(
           tooltip: 'Refresh connections',
           onPressed: (_booting || _voiceSession || _processingTurn) ? null : _initialize,
