@@ -1,264 +1,100 @@
-# FRIDAY
+# FRIDAY — Native Voice-First AI Desktop Assistant
 
-**FRIDAY** is a personal AI operator prototype for the Nebius Global AI Hackathon. The intended product combines a minimal command-centre UI, model routing, specialized Bots, policy-controlled tools, and a verified coding loop.
+FRIDAY is a Windows-first Flutter desktop assistant with a Python local service. The user interface is native Flutter/Dart; there are no HTML, CSS, or browser-JavaScript UI assets. The default interaction is voice, not a typing-first chat page.
 
-## Voice-first home UI
+## What is in this branch
 
-FRIDAY opens directly into a voice-first humanoid interface at /. Click Activate FRIDAY once to grant microphone permission; it detects a spoken phrase, uses local Whisper to transcribe the phrase, calls the selected real model, speaks the answer through the browser/OS voice, and resumes listening. The interface has no typing box on the home screen. The advanced dashboard remains at /console.
+- **Native Flutter desktop UI** in `desktop_app/`: animated holographic humanoid core, movable stage orb and status chips, connection settings, diagnostics, and spoken conversation history.
+- **Voice-first hands-free loop**: records microphone audio until a pause, sends it to the local transcription endpoint, submits the transcript to a real selected model, speaks the answer with the installed Windows speech voice, and resumes listening until stopped.
+- **Local model routing**: the API discovers installed Ollama model tags and exposes only routes it knows about. Automatic voice mode stays local-only and does not quietly fall back to a hosted model.
+- **Local Python backend**: FastAPI retains task history, model routing, skills, bots, the optional Codex worker, voice transcription, and explicit allowlisted desktop actions.
+- **Saved connection configuration**: the Flutter app stores the API address, Ollama address, project folder, model route and voice preferences in a local `connection.json` settings file. The path is shown in Diagnostics.
+- **Windows setup and build scripts**: create a Python virtual environment, install offline speech dependencies, pull a small starter model, generate Flutter Windows runner files and launch the desktop application.
 
-FRIDAY's main API, UI, SQLite history, and local inference adapter are served from FastAPI on port 8000. The voice readiness endpoint /api/v1/voice/status reports whether the backend can reach Ollama and whether the optional offline speech package is installed. UI status is based on real API results, not a decorative loading indicator.
+## Run on Windows
 
-## Model routing
+Install these prerequisites first:
 
-Automatic voice chat is strictly local-only: it calls an installed Ollama model and displays a clear setup error if one is missing. Cloud routes remain optional and can be explicitly selected through the API; they are not a hidden automatic fallback. /api/v1/models lists the installed local Ollama tags and configured routes. Missing models and failed providers produce an error rather than a fabricated answer. Local model weights must be downloaded separately; no model weights are bundled into Git.
+1. Python 3.11 or newer.
+2. Flutter stable SDK and Windows desktop build prerequisites. In Visual Studio Installer, include **Desktop development with C++**. See the official [Flutter Windows setup guide](https://docs.flutter.dev/platform-integration/windows/setup).
+3. Ollama for Windows. The setup script can try the Windows Package Manager install option, or install it from [ollama.com/download/windows](https://ollama.com/download/windows).
 
-## Voice input and spoken replies
+Then open PowerShell in the repository root and run:
 
-Offline speech input uses faster-whisper, installed separately with python -m pip install -r requirements-voice.txt. The tiny Whisper weights (the low-memory default) download on the first transcription and are then cached in the runtime. Speech output uses browser/OS speechSynthesis by default, so no ElevenLabs key is required. The microphone starts only after the user activates the session; audio clips are sent to FRIDAY's backend for local transcription and are not sent to a hosted speech-to-text service by FRIDAY.
-
-ElevenLabs remains an optional older endpoint at POST /api/v1/voice/speech, but it is not required by the voice-first home screen. Wispr Flow is an independent desktop dictation app and is not embedded as a website microphone API.
-
-## Backend status
-
-The initial backend is now in the repository:
-
-- FastAPI health and status routes
-- Task planning and persistent SQLite task history
-- Deterministic fallback planner so development can continue without cloud credentials
-- Optional Nebius Token Factory model adapter
-- Risk/approval flags for requests that may cause external or physical actions
-- Integration-readiness endpoint that distinguishes configured, missing, and planned routes
-- Optional Claude Fable 5.1 reasoning route, disabled by default and gated by complexity/budget heuristics
-- tmux development launcher for supervising the API terminal and a shell
-- An opt-in Codex CLI worker can execute eligible coding tasks in an isolated Git worktree; broad shell, IoT, messaging and deployment actions remain disabled
-
-This is an operator prototype, not yet a full desktop agent. The task planner, saved task lifecycle, command-centre UI, and an opt-in Codex coding worker are present. On a Windows machine running the backend locally, exact voice commands can open Calculator, Notepad, File Explorer, Paint, the default browser, or an explicitly spoken HTTP/HTTPS URL. These actions use a fixed allowlist; FRIDAY does not run arbitrary shell text, control devices, or automatically merge agent changes.
-
-## Run in GitHub Codespaces
-
-Open the repository in GitHub Codespaces, then run:
-
-    python -m venv .venv
-    source .venv/bin/activate
-    python -m pip install --upgrade pip
-    python -m pip install -r requirements.txt
-    bash scripts/setup_local_runtime.sh --voice
-    python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-
-In the Ports tab, open forwarded port 8000. The voice-first app is at /; the advanced console is at /console; FastAPI docs are at /docs.
-
-Codespaces clarification: this runs Ollama and its model weights in the remote Codespace, not on your laptop. For truly laptop-local inference, clone or download this repository to Windows, install Ollama on Windows, run scripts/setup_local_runtime.ps1, then start FRIDAY locally at http://127.0.0.1:8000. See docs/FRIDAY_LOCAL_SETUP.md for both options.
-
-## Quick test
-
-Health check:
-
-```bash
-curl http://127.0.0.1:8000/health
+```powershell
+.\scripts\setup_friday_windows.ps1 -InstallOllama
+.\scripts\run_friday_windows.ps1
 ```
 
-Create a task:
+The first setup downloads the small `qwen2.5:1.5b` starter model and installs `faster-whisper`. This requires an internet connection once for packages/model downloads. Subsequent inference and transcription can run offline while the downloaded weights remain on the machine.
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/tasks \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"Help me debug my Python API"}'
+To skip the starter model download, run `.`\scripts\setup_friday_windows.ps1 `-SkipModelDownload`. To skip the Whisper package, run `.`\scripts\setup_friday_windows.ps1 `-SkipOfflineSpeech`; voice capture will report that local transcription needs setup until the package is installed.
+
+The main launcher sets `FRIDAY_PROJECT_ROOT` and `FRIDAY_PYTHON`, runs the Flutter desktop app, and lets the client start the local FastAPI sidecar. The sidecar reads repo-local `.env` settings. The app's Settings panel can also choose the repository folder and edit both connection URLs.
+
+## Development commands
+
+From the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-voice.txt
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-List recent tasks:
+In another terminal:
 
-```bash
-curl http://127.0.0.1:8000/api/v1/tasks
+```powershell
+cd desktop_app
+flutter create --platforms=windows .
+flutter pub get
+dart format lib test
+flutter analyze
+flutter test
+flutter run -d windows
+flutter build windows --release
 ```
 
-List available model routes:
+The Windows build output is under `desktop_app/build/windows/x64/runner/Release/`. The generated Windows runner files are created by the setup script / Flutter command rather than hand-written source templates.
 
-```bash
-curl http://127.0.0.1:8000/api/v1/models
+## How local voice works
+
+1. Click **Activate FRIDAY** and allow microphone access in Windows privacy settings.
+2. Speak naturally and pause. The desktop app records a short WAV utterance using the Windows recording stack.
+3. The local FastAPI process calls `faster-whisper` to transcribe the audio, then sends the text and recent conversation turns to `/api/v1/chat`.
+4. Automatic routing calls an actually installed Ollama model. The app displays real API/provider errors instead of inventing a response.
+5. The answer is spoken using the installed Windows text-to-speech voice, and FRIDAY resumes listening while the voice session is active.
+
+The audio file is temporary and deleted after the turn. The small Whisper model is downloaded on first use and cached for later offline runs. Text-to-speech uses the local Windows voice engine; no hosted speech API key is required.
+
+## API endpoints
+
+- `GET /` — API metadata for native clients (JSON; no web UI).
+- `GET /health` — service health.
+- `GET /api/v1/voice/status` — Ollama and Whisper readiness.
+- `GET /api/v1/models` — installed local model routes and configured optional routes.
+- `POST /api/v1/voice/transcribe` — local Whisper transcription.
+- `POST /api/v1/chat` — conversation inference or an exact allowlisted desktop action.
+- `GET /docs` — FastAPI API explorer.
+
+## Safety and current boundaries
+
+FRIDAY's automatic voice route is local-only. Optional cloud routes require an explicit route selection and provider credentials. The first local desktop actions are allowlisted app-open and URL-open intents; they do not enable arbitrary command execution, unrestricted desktop control, device control, email/WhatsApp automation or deployment.
+
+The Python APIs for task planning, task history, bots, skills, and the guarded Codex worker remain in the backend. This Flutter migration replaces the previous HTML screens; the old task/Bot/Skills dashboard has **not yet been fully ported to native Flutter views**. Use the API docs until those native screens are added. Likewise, Hermes Agent and Claude Code are not made operational just by appearing in an integration inventory: each needs a working, tested adapter and the relevant runtime installed.
+
+## Repository layout
+
+```text
+backend/                     FastAPI, local inference, skills and agent adapters
+desktop_app/                 Flutter/Dart native desktop client
+scripts/setup_friday_windows.ps1
+scripts/run_friday_windows.ps1
+requirements.txt             Python API dependencies
+requirements-voice.txt       Optional offline Whisper dependency
+tests/                       Python API and safety tests
 ```
 
-POST `/api/v1/tasks` accepts `model_route` values `auto`, `nebius`, `nvidia_nim`, `openai_compatible`, `claude_fable`, and enabled IDs from `data/model-profiles.json`. The `nebius` route uses the exact model ID configured in `NEBIUS_MODEL`; set it to a supported Nemotron ID in your Token Factory account to route tasks to Nemotron. Unconfigured explicit routes return HTTP 409 rather than silently falling back.
-
-List actual integration readiness:
-
-```bash
-curl http://127.0.0.1:8000/api/v1/integrations
-```
-
-List metadata for local imported skills (does not activate or execute them):
-
-```bash
-curl http://127.0.0.1:8000/api/v1/skills
-```
-
-Set `SKILLS_ROOT=./skills/imported` in `.env` or leave the default. Copy reviewed skill folders into that local directory; it is ignored by Git so your imported skill content is not published automatically. The inventory endpoint reads only `SKILL.md` metadata. Newly imported files start `disabled_pending_review`; approved entries show `enabled_reviewed` only while their SHA-256 still matches the reviewed version.
-
-The integration registry does not execute agents or expose credentials. A command being installed is not enough to mark it fully operational.
-
-### Import skill metadata
-
-Open the Skills Library in the web UI and upload one of the supported files: `ECC-main.zip`, `Desktop2222.zip`, or `teddy-skill-candidates.zip`. The API accepts canonical archive paths only and enforces archive, symlink, path-traversal, and individual skill-file size checks. It copies only selected `SKILL.md` files to the local ignored directory `skills/imported/`; it does not install dependencies, execute scripts, or enable skills. All discovered skills start as `disabled_pending_review`.
-
-The `teddy-skill-candidates.zip` name is supported for a curated archive, but **that archive is not bundled in this repository**. Use the original `ECC-main.zip` or `Desktop2222.zip` files that you have, or create the curated layout described in `scripts/import_skill_metadata.py`. You can also import from a local terminal:
-
-```bash
-python scripts/import_skill_metadata.py incoming/ECC-main.zip incoming/Desktop2222.zip
-curl http://127.0.0.1:8000/api/v1/skills
-```
-
-Only metadata is imported. Model weights, environments, executable scripts, and the quarantined CL4R1T4S prompt archive are not activated. All new skills remain disabled until explicit, hash-pinned review.
-
-Alternatively, review and enable a skill from the terminal:
-
-```bash
-python scripts/skill_admin.py list
-python scripts/skill_admin.py show SKILL_ID
-python scripts/skill_admin.py enable SKILL_ID
-```
-
-The enable command prints the skill content and requires you to type `ENABLE SKILL_ID` after review. In the web UI, the same approval phrase is required after reading the displayed skill text. It writes a local, gitignored hash-pinned policy; if the skill file changes, it is disabled automatically until reviewed again. You can use `python scripts/skill_admin.py disable SKILL_ID` at any time.
-
-When a provider is configured, TEDDY selects at most two hash-approved skills based on prompt/description keyword overlap, capped at 6,000 total skill-content characters by default. The model receives them as untrusted supplemental guidance, not system policy. POST `/api/v1/tasks` also accepts `skill_ids` for explicit selections; requests for unapproved skills are rejected. The task response records `skills_used`. With only the local fallback active, skills are not represented as used because no model receives their instructions.
-
-Get a task by its ID:
-
-```bash
-curl http://127.0.0.1:8000/api/v1/tasks/TASK_ID
-```
-
-When no model credentials are configured, TEDDY uses a deterministic fallback planner and explicitly reports that no external model was called.
-
-## Run a coding task with Codex
-
-Install and authenticate the official Codex CLI in the same environment that runs TEDDY. Follow the current instructions at [OpenAI Codex CLI docs](https://developers.openai.com/codex/cli/).
-
-Check that the CLI is visible to the backend process:
-
-```bash
-npm install -g @openai/codex@latest
-codex --version
-codex login
-```
-
-Create a coding task from the command centre. In Task History, open a coding task and use **Run in isolated Codex worktree**. The API also supports:
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/tasks/TASK_ID/run
-```
-
-The endpoint rejects non-coding, high-risk, approval-required, duplicate, and unavailable-agent runs. It creates a detached worktree under `.teddy-worktrees/TASK_ID`, asks Codex to work within its `workspace-write` sandbox with sandbox network access explicitly disabled, does not pass TEDDY provider API keys into the worker environment, sets a configurable timeout (`AGENT_TIMEOUT_SECONDS`, default 900 seconds), saves safe event metadata and the final agent message, and keeps the worktree for review. The original working tree is not changed by the worker, and TEDDY does not auto-merge or commit the changes. On successful agent exit, task status means the CLI process completed—not independent proof that every test passed. Verify the reported commands/results and inspect the diff before manually applying changes.
-
-This prototype is intended for one trusted local operator and has no user authentication layer. Do not expose the agent-run endpoint to untrusted users or a public network.
-
-## Configure Nebius Token Factory later
-
-1. Copy `.env.example` to `.env`.
-2. Set `NEBIUS_API_KEY`.
-3. Set `NEBIUS_MODEL` to the exact model ID available in your Token Factory account.
-4. Keep `.env` out of Git.
-
-Optional: configure NVIDIA NIM as a separate route (for example, a Nemotron model supported by your NVIDIA API account):
-
-```dotenv
-NVIDIA_API_KEY=your_key_here
-NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
-NVIDIA_MODEL=your_exact_nvidia_model_id
-```
-
-Then restart the backend and check `GET /api/v1/models`. Select `model_route: "nvidia_nim"` for a task to use that endpoint. NVIDIA's NIM API uses the OpenAI-compatible `/v1/chat/completions` interface; supported model IDs and access vary by model/account ([official API reference](https://docs.api.nvidia.com/nim/reference/llm-apis)).
-
-### Add more hosted model profiles without changing TEDDY's router
-
-For any additional provider that exposes an **OpenAI-compatible chat-completions API**, configure a named profile rather than adding Python code for every model:
-
-```bash
-mkdir -p data
-cp config/model-profiles.example.json data/model-profiles.json
-```
-
-Edit `data/model-profiles.json` and replace each placeholder `base_url` and `model` with the exact endpoint and model ID documented by your provider. Give each profile a unique lowercase `id`; put the **name of an environment variable** in `api_key_env`, not the API key itself; add that secret to your local `.env` or Codespaces secrets; and only set `enabled` to `true` after validating the endpoint. Example profile:
-
-```json
-{
-  "id": "nex_n2_5",
-  "name": "Nex-N2.5",
-  "base_url": "https://YOUR_VERIFIED_ENDPOINT/v1",
-  "model": "YOUR_EXACT_MODEL_ID",
-  "api_key_env": "NEX_N2_5_API_KEY",
-  "priority": 50,
-  "capabilities": ["text", "reasoning", "coding"],
-  "enabled": true
-}
-```
-
-Then add `NEX_N2_5_API_KEY=...` to the local `.env`, restart TEDDY, and check `GET /api/v1/models`. If the profile is configured and its key exists, its `id` becomes a valid `model_route`. With `auto`, TEDDY selects a ready profile after Nebius/NVIDIA routes and before the single custom OpenAI-compatible route. Profiles are only marked `configured_not_tested`; they are not declared healthy until a real call succeeds.
-
-**Important:** this adapter handles text-based chat completions only. A profile's `vision` or `audio` capability is descriptive metadata, not proof that multimodal inputs are implemented. Nex-N2.5 or GLM-V must expose a compatible endpoint for this adapter to call them; raw model source/weights or an agentic API require a separate adapter. The profile file is under `data/`, which is gitignored, and API secrets must never be committed.
-
-The configured default base URL is `https://api.tokenfactory.nebius.com/v1`.
-
-The backend calls the configured model for task planning only. Model output is validated before it is stored. External actions and tool execution remain disabled.
-
-
-## Optional Claude Fable 5.1 reasoning route
-
-Claude Fable 5.1 is a backend-only hosted reasoning route, not a UI component. It is disabled by default and will only be considered when both `ANTHROPIC_API_KEY` is present and `CLAUDE_FABLE_ENABLED=true`. It is selected only when the task text matches a narrow set of complex/long-horizon signals and the estimated-cost/prompt/output caps pass; ordinary tasks stay on the configured Nebius route or the local fallback.
-
-Add these settings to your ignored local `.env` only after choosing to use the paid API:
-
-```dotenv
-ANTHROPIC_API_KEY=your_key_here
-CLAUDE_FABLE_MODEL=claude-fable-5-1
-CLAUDE_FABLE_ENABLED=true
-CLAUDE_FABLE_MAX_OUTPUT_TOKENS=900
-CLAUDE_FABLE_MAX_PROMPT_CHARS=8000
-CLAUDE_FABLE_MAX_ESTIMATED_COST_USD=0.10
-```
-
-The budget calculation is approximate, not a provider-enforced billing cap. Keep credentials private, inspect provider pricing, and leave the route disabled when it is not needed. Model calls are for planning only; they do not directly execute tools. See [Claude Fable 5.1 API docs](https://platform.claude.com/docs/en/models/fable-5-1/overview).
-
-## tmux development sessions
-
-tmux can keep the API and shell sessions available when the terminal connection drops, as long as the Codespace/container itself keeps running. It is not 24/7 hosting.
-
-```bash
-sudo apt-get update && sudo apt-get install -y tmux
-bash scripts/tmux-dev.sh
-```
-
-Detach without stopping the session with **Ctrl+B**, then **D**. Reattach with `tmux attach -t teddy-dev`. Stop it with `tmux kill-session -t teddy-dev`.
-
-## Expanded FRIDAY multi-agent architecture
-
-See [FRIDAY Agent Integration Blueprint](docs/FRIDAY_AGENT_INTEGRATION_BLUEPRINT.md) for the intended adapter contracts and safety requirements for Ollama, Kimi, Qwen, Llama, Nemotron, OpenCode, Codex, Claude Code, Hermes Agent, NemoClaw, Cursor, Bolt, Lovable, ECC Skills, Needle, REA, and media processing.
-
-The integration inventory now reports Ollama runtime reachability and the model tags returned by its local `/api/tags` endpoint. Kimi and Qwen hosted access remains profile-configured; Llama/Qwen local availability depends on the models actually installed in Ollama. OpenCode/NemoClaw are CLI-detected only, and Cursor/Bolt/Lovable are handoff/import states—not verified direct API integrations.
-
-## Integration inventory
-
-- [AI integration architecture](docs/AI_INTEGRATION_ARCHITECTURE.md)
-- [Inspected uploads and pending files](docs/UPLOAD_INVENTORY.md)
-
-Needle 3 source has been inspected for possible compact structured tool calling, but its weights/engine are not bundled in the uploaded ZIP. The separate Tesseract ZIP is an OCR engine; it is not the video-editing tool. Nex-N2.5, the user's broad skills directory, the actual Tesseract video tool, and the Blynk library still require their exact source/credentials or files before connection.
-
-## Tests
-
-```bash
-pytest -q
-```
-
-## Security
-
-- Never commit API keys, tokens, or private credentials.
-- Model-planning output is validated before storage. Agent-written code is executed only through the explicitly requested Codex CLI worker and that CLI's workspace sandbox; never expose the prototype to untrusted users.
-- External actions are intentionally disabled in this initial backend.
-- Review the worktree and run independent tests before manually applying changes; agent exit status is not proof that tests passed.
-
-## License
-
-TEDDY's original code is distributed under the MIT License. Third-party repositories, libraries, and models retain their own licenses and terms.
-
-
-## Autonomy policy endpoint
-
-GET `/api/v1/policy` returns TEDDY's inspectable autonomy contract: supervised, builder, researcher, and trusted-automation profiles; dynamic specialist-team coordination; and non-negotiable safety boundaries. When agents disagree, TEDDY's chosen policy is **competitive execution**: where safe and practical, compare isolated implementations using tests and benchmarks rather than deciding by majority vote. The endpoint describes policy and implementation status; it does not claim every adapter is installed. Hermes Agent and Claude Code remain pending tested adapters; device control, webcam emotion inference, automatic merging, and deployment are not enabled.
+All provider keys belong in local environment variables or `.env`; never commit credentials.
