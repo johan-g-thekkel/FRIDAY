@@ -298,26 +298,20 @@ def test_unconfigured_custom_model_route_returns_conflict(tmp_path):
         assert "openai-compatible" in response.json()["detail"].lower()
 
 
-def test_root_serves_voice_first_ui(tmp_path):
+def test_root_serves_native_client_api_metadata(tmp_path):
     with _client_for_test(tmp_path) as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-        assert "FRIDAY" in response.text
-        assert "Activate FRIDAY" in response.text
-        assert 'id="activate-button"' in response.text
+        assert response.headers["content-type"].startswith("application/json")
+        body = response.json()
+        assert body["name"] == "FRIDAY"
+        assert body["type"] == "native-desktop-backend"
+        assert body["health"] == "/health"
+        assert body["voice_status"] == "/api/v1/voice/status"
 
-        console = client.get("/console")
-        assert console.status_code == 200
-        assert "Command centre" in console.text
-        assert 'id="task-form"' in console.text
-
-        css = client.get("/static/app.css")
-        script = client.get("/static/app.js")
-        assert css.status_code == 200
-        assert "text/css" in css.headers["content-type"]
-        assert script.status_code == 200
-        assert "application/javascript" in script.headers["content-type"] or "text/javascript" in script.headers["content-type"]
+        # UI is a Flutter desktop executable, so the API no longer serves HTML.
+        assert client.get("/console").status_code == 404
+        assert client.get("/static/app.js").status_code == 404
 
 
 def test_api_root_remains_available(tmp_path):
