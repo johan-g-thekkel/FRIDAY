@@ -1,7 +1,8 @@
 param(
     [switch]$SkipOfflineSpeech,
     [switch]$SkipModelDownload,
-    [switch]$InstallOllama
+    [switch]$InstallOllama,
+    [switch]$SkipFlutter
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,8 +16,8 @@ Write-Host "  FRIDAY // Windows local setup" -ForegroundColor Cyan
 Write-Host "  Repository: $repoRoot"
 Write-Host ""
 
-if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
-    throw "Flutter SDK was not found on PATH. Install Flutter and Windows desktop dependencies first: https://docs.flutter.dev/platform-integration/windows/setup"
+if (-not $SkipFlutter -and -not (Get-Command flutter -ErrorAction SilentlyContinue)) {
+    throw "Flutter SDK was not found on PATH. Install Flutter and Windows desktop dependencies first: https://docs.flutter.dev/platform-integration/windows/setup. Use -SkipFlutter only with a prebuilt FRIDAY Windows package."
 }
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
@@ -85,16 +86,20 @@ if (Get-Command ollama -ErrorAction SilentlyContinue) {
     Write-Warning "Ollama is not installed. Install it from https://ollama.com/download/windows, then run this script again. The Flutter app can open, but local model inference will not work until Ollama is available."
 }
 
-Push-Location $desktop
-try {
-    if (-not (Test-Path (Join-Path $desktop "windows\runner\main.cpp"))) {
-        Write-Host "Generating the native Windows runner files..."
-        flutter create --platforms=windows --no-pub .
+if (-not $SkipFlutter) {
+    Push-Location $desktop
+    try {
+        if (-not (Test-Path (Join-Path $desktop "windows\\runner\\main.cpp"))) {
+            Write-Host "Generating the native Windows runner files..."
+            flutter create --platforms=windows --no-pub .
+        }
+        Write-Host "Resolving Flutter packages..."
+        flutter pub get
+    } finally {
+        Pop-Location
     }
-    Write-Host "Resolving Flutter packages..."
-    flutter pub get
-} finally {
-    Pop-Location
+} else {
+    Write-Host "Flutter SDK setup skipped; preparing the prebuilt native FRIDAY client."
 }
 
 Write-Host ""
