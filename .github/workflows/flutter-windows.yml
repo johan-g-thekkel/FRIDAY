@@ -1,0 +1,64 @@
+name: FRIDAY Flutter Windows desktop
+
+on:
+  push:
+    branches: [main, fix/friday-central-console-merge-conflicts]
+    paths:
+      - "desktop_app/**"
+      - "backend/**"
+      - "scripts/**"
+      - ".github/workflows/flutter-windows.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "desktop_app/**"
+      - "backend/**"
+      - "scripts/**"
+      - ".github/workflows/flutter-windows.yml"
+
+concurrency:
+  group: friday-flutter-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop_app
+        shell: pwsh
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate native Windows host files
+        run: flutter create --platforms=windows .
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Format Dart sources
+        run: dart format lib test
+
+      - name: Analyze Dart sources
+        run: flutter analyze --no-pub
+
+      - name: Run Flutter tests
+        run: flutter test --no-pub
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Upload Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: friday-windows-release
+          path: desktop_app/build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 7
