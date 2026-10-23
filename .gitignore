@@ -19,3 +19,12 @@ skills/imported/
 
 # Disposable isolated workspaces created by the Codex worker.
 .teddy-worktrees/
+
+# Flutter/Dart desktop client artifacts
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/pubspec.lock
+*.iml
+desktop_app/windows/flutter/ephemeral/
