@@ -87,6 +87,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   String? _activeRecordingPath;
   Offset _orbOffset = const Offset(0, 0);
   bool _orbMoved = false;
+  final Map<String, Offset> _chipOffsets = {};
 
   bool get _whisperReady => _voiceStatus['transcription_ready'] == true;
   List<String> get _installedModels => (_voiceStatus['models'] is List)
@@ -726,8 +727,11 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
         ),
         child: LayoutBuilder(builder: (context, constraints) {
           final size = Size(constraints.maxWidth, constraints.maxHeight);
-          final orbSize = compact ? 210.0 : (constraints.maxHeight * .48).clamp(210.0, 330.0);
-          final canMove = constraints.maxWidth > orbSize + 30 && constraints.maxHeight > orbSize + 70;
+          final topInset = compact ? 98.0 : 112.0;
+          final bottomInset = compact ? 104.0 : 110.0;
+          final innerHeight = (constraints.maxHeight - topInset - bottomInset).clamp(0.0, constraints.maxHeight);
+          final orbSize = compact ? 190.0 : (innerHeight * .73).clamp(180.0, 300.0);
+          final canMove = constraints.maxWidth > orbSize + 30 && innerHeight > orbSize + 20;
           return Stack(
             clipBehavior: Clip.hardEdge,
             children: [
@@ -758,30 +762,32 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                 ),
               ),
               Positioned.fill(
-                top: compact ? 98 : 112,
-                bottom: compact ? 104 : 110,
+                top: topInset,
+                bottom: bottomInset,
                 child: Stack(
                   clipBehavior: Clip.hardEdge,
                   children: [
                     Positioned(
                       left: size.width / 2 - orbSize / 2 + (canMove ? _orbOffset.dx : 0),
-                      top: (constraints.maxHeight - orbSize) / 2 - (compact ? 13 : 0) + (canMove ? _orbOffset.dy : 0),
+                      top: (innerHeight - orbSize) / 2 - (compact ? 6 : 0) + (canMove ? _orbOffset.dy : 0),
                       width: orbSize,
                       height: orbSize,
                       child: GestureDetector(
-                        onPanUpdate: canMove ? (details) => _onOrbPanUpdate(details, size) : null,
+                        onPanUpdate: canMove ? (details) => _onOrbPanUpdate(details, Size(size.width, innerHeight)) : null,
                         child: HolographicOrb(mode: _mode, size: orbSize),
                       ),
                     ),
                     _buildFloatingChip(
-                      position: Offset(22, constraints.maxHeight * .38),
+                      stageSize: Size(size.width, innerHeight),
+                      position: Offset(22, innerHeight * .29),
                       label: 'LOCAL MODEL',
                       value: _installedModels.isEmpty ? 'NOT FOUND' : _truncate(_selectedModelName, 21),
                       color: _installedModels.isEmpty ? const Color(0xFFFFA1AE) : _cyan,
                       icon: Icons.memory_rounded,
                     ),
                     _buildFloatingChip(
-                      position: Offset((constraints.maxWidth - 163).clamp(0.0, constraints.maxWidth), constraints.maxHeight * .62),
+                      stageSize: Size(size.width, innerHeight),
+                      position: Offset((constraints.maxWidth - 175).clamp(0.0, constraints.maxWidth), innerHeight * .68),
                       label: 'VOICE ENGINE',
                       value: _whisperReady ? 'OFFLINE WHISPER' : 'SETUP NEEDED',
                       color: _whisperReady ? const Color(0xFF85EDC3) : const Color(0xFFFFC17B),
@@ -830,23 +836,30 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
   }
 
   Widget _buildFloatingChip({
+    required Size stageSize,
     required Offset position,
     required String label,
     required String value,
     required Color color,
     required IconData icon,
   }) {
+    final offset = _chipOffsets[label] ?? position;
+    final maxX = (stageSize.width - 174).clamp(0.0, stageSize.width);
+    final maxY = (stageSize.height - 62).clamp(0.0, stageSize.height);
     return Positioned(
-      left: position.dx,
-      top: position.dy,
-      child: Draggable<String>(
-        data: label,
-        feedback: Material(
-          color: Colors.transparent,
-          child: Opacity(opacity: .88, child: _RuntimeChip(label: label, value: value, color: color, icon: icon)),
+      left: offset.dx.clamp(0.0, maxX),
+      top: offset.dy.clamp(0.0, maxY),
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            final next = (_chipOffsets[label] ?? position) + details.delta;
+            _chipOffsets[label] = Offset(next.dx.clamp(0.0, maxX), next.dy.clamp(0.0, maxY));
+          });
+        },
+        child: MouseRegion(
+          cursor: SystemMouseCursors.grab,
+          child: _RuntimeChip(label: label, value: value, color: color, icon: icon),
         ),
-        childWhenDragging: Opacity(opacity: .25, child: _RuntimeChip(label: label, value: value, color: color, icon: icon)),
-        child: _RuntimeChip(label: label, value: value, color: color, icon: icon),
       ),
     );
   }
