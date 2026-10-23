@@ -585,7 +585,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
     final maxX = (stageSize.width / 2) - 104;
     final maxY = (stageSize.height / 2) - 104;
     setState(() {
-      _orbOffset = Offset(next.dx.clamp(-maxX, maxX), next.dy.clamp(-maxY, maxY));
+      _orbOffset = Offset(next.dx.clamp(-maxX, maxX).toDouble(), next.dy.clamp(-maxY, maxY).toDouble());
       _orbMoved = true;
     });
   }
@@ -725,8 +725,8 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
           final size = Size(constraints.maxWidth, constraints.maxHeight);
           final topInset = compact ? 98.0 : 112.0;
           final bottomInset = compact ? 104.0 : 110.0;
-          final innerHeight = (constraints.maxHeight - topInset - bottomInset).clamp(0.0, constraints.maxHeight);
-          final orbSize = compact ? 190.0 : (innerHeight * .73).clamp(180.0, 300.0);
+          final innerHeight = (constraints.maxHeight - topInset - bottomInset).clamp(0.0, constraints.maxHeight).toDouble();
+          final orbSize = compact ? 190.0 : (innerHeight * .73).clamp(180.0, 300.0).toDouble();
           final canMove = constraints.maxWidth > orbSize + 30 && innerHeight > orbSize + 20;
           return Stack(
             clipBehavior: Clip.hardEdge,
@@ -783,7 +783,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                     ),
                     _buildFloatingChip(
                       stageSize: Size(size.width, innerHeight),
-                      position: Offset((constraints.maxWidth - 175).clamp(0.0, constraints.maxWidth), innerHeight * .68),
+                      position: Offset((constraints.maxWidth - 175).clamp(0.0, constraints.maxWidth).toDouble(), innerHeight * .68),
                       label: 'VOICE ENGINE',
                       value: _whisperReady ? 'OFFLINE WHISPER' : 'SETUP NEEDED',
                       color: _whisperReady ? const Color(0xFF85EDC3) : const Color(0xFFFFC17B),
@@ -840,16 +840,16 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
     required IconData icon,
   }) {
     final offset = _chipOffsets[label] ?? position;
-    final maxX = (stageSize.width - 174).clamp(0.0, stageSize.width);
-    final maxY = (stageSize.height - 62).clamp(0.0, stageSize.height);
+    final maxX = (stageSize.width - 174).clamp(0.0, stageSize.width).toDouble();
+    final maxY = (stageSize.height - 62).clamp(0.0, stageSize.height).toDouble();
     return Positioned(
-      left: offset.dx.clamp(0.0, maxX),
-      top: offset.dy.clamp(0.0, maxY),
+      left: offset.dx.clamp(0.0, maxX).toDouble(),
+      top: offset.dy.clamp(0.0, maxY).toDouble(),
       child: GestureDetector(
         onPanUpdate: (details) {
           setState(() {
             final next = (_chipOffsets[label] ?? position) + details.delta;
-            _chipOffsets[label] = Offset(next.dx.clamp(0.0, maxX), next.dy.clamp(0.0, maxY));
+            _chipOffsets[label] = Offset(next.dx.clamp(0.0, maxX).toDouble(), next.dy.clamp(0.0, maxY).toDouble());
           });
         },
         child: MouseRegion(
