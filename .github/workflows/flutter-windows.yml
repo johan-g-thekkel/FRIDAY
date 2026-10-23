@@ -38,7 +38,7 @@ jobs:
           cache: true
 
       - name: Generate native Windows host files
-        run: flutter create --platforms=windows .
+        run: flutter create --platforms=windows --no-pub .
 
       - name: Resolve Flutter packages
         run: flutter pub get
