@@ -310,6 +310,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
         return;
       }
       final transcription = await _backend!.transcribeAudio(path);
+      if (!_voiceSession) return;
       final transcript = (transcription['text'] ?? '').toString().trim();
       if (transcript.isEmpty) {
         _setStateSafe(() => _status = 'No clear speech detected. Try speaking closer to the microphone.');
@@ -326,6 +327,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
         if (_messages.isNotEmpty && _messages.first['role'] == 'assistant') _messages.removeAt(0);
       }
       final response = await _backend!.chat(_messages, modelRoute: _settings.modelRoute);
+      if (!_voiceSession) return;
       final answer = (response['answer'] ?? '').toString().trim();
       if (answer.isEmpty) throw const BackendException('The model returned an empty answer.');
       final assistantMessage = <String, String>{'role': 'assistant', 'content': answer};
@@ -341,12 +343,14 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       _log('Answered with $_providerLabel');
       await _speak(answer);
     } catch (error) {
-      _setStateSafe(() {
-        _lastError = error.toString();
-        _status = error.toString();
-        _mode = 'error';
-      });
-      _log('Turn failed: ${_truncate(error.toString(), 110)}');
+      if (_voiceSession) {
+        _setStateSafe(() {
+          _lastError = error.toString();
+          _status = error.toString();
+          _mode = 'error';
+        });
+        _log('Turn failed: ${_truncate(error.toString(), 110)}');
+      }
     } finally {
       if (path != null) {
         try {
@@ -386,9 +390,17 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
     _speechDetected = false;
     await _amplitudeSubscription?.cancel();
     _amplitudeSubscription = null;
+    final unfinishedPath = _processingTurn ? null : _activeRecordingPath;
+    if (!_processingTurn) _activeRecordingPath = null;
     try {
       if (await _recorder.isRecording()) await _recorder.stop();
     } catch (_) {}
+    if (unfinishedPath != null) {
+      try {
+        final unfinished = File(unfinishedPath);
+        if (await unfinished.exists()) await unfinished.delete();
+      } catch (_) {}
+    }
     await _tts.stop();
     if (updateUi && mounted && !_disposed) {
       _setStateSafe(() {
@@ -544,10 +556,10 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
             child: SelectableText([
               'API: ${_settings.apiBaseUrl}',
               'Project: ${_settings.backendProjectPath.isEmpty ? 'auto-detected' : _settings.backendProjectPath}',
-              'Ollama: ${_settings.ollamaBaseUrl}',
+              'Ollama URL: ${_settings.ollamaBaseUrl}',
               'Settings file: $settingsPath',
               'Selected model route: ${_settings.modelRoute}',
-              'Ollama: ${_voiceStatus['ollama_reachable'] == true ? 'reachable' : 'not detected'}',
+              'Ollama status: ${_voiceStatus['ollama_reachable'] == true ? 'reachable' : 'not detected'}',
               'Installed models: ${_installedModels.isEmpty ? 'none detected' : _installedModels.join(', ')}',
               'Local speech: ${_whisperReady ? 'Whisper installed' : 'not installed'}',
               'Backend process output: ${_backend?.lastProcessOutput ?? 'no process log available'}',
