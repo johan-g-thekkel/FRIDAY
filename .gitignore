@@ -25,6 +25,5 @@ skills/imported/
 **/build/
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
-**/pubspec.lock
 *.iml
 desktop_app/windows/flutter/ephemeral/
