@@ -531,7 +531,8 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       if (!api.startsWith('http://') && !api.startsWith('https://')) api = 'http://$api';
       _settings = _settings.copyWith(
         apiBaseUrl: api,
-        ollamaBaseUrl: ollamaController.text.trim().replaceFirst(RegExp(r'/+\        autoStartBackend: autoStart,
+        ollamaBaseUrl: ollamaController.text.trim(),
+        autoStartBackend: autoStart,
         autoResumeListening: autoResume,
         modelRoute: modelRoute,
         voiceLocale: locale,
