@@ -61,6 +61,18 @@ From `desktop_app`:
 
 The release files are under `build/windows/x64/runner/Release` after a Windows build. The repository's launcher sets `FRIDAY_PROJECT_ROOT` and `FRIDAY_PYTHON` so the desktop client can find the Python API.
 
+## Operations console
+
+The toolbar's dashboard icon opens a native Operations Console with these working API-backed views:
+
+- **Tasks:** create task plans, inspect the returned plan and execution log, and submit eligible low/medium-risk coding plans to the backend's isolated Codex worktree worker.
+- **Bots / Agents:** create, edit, enable, disable, and delete bot profiles, including instructions, memory notes, preferred route, and runtime preference.
+- **Skills:** import the supported skill archives, inspect the actual `SKILL.md` text, approve a skill only after typing its exact confirmation phrase, or disable it. Imported scripts are not executed.
+- **Models:** inspect model routes and the backend's actual availability signal.
+- **Connections:** inspect the runtime's reported connection/integration readiness without exposing secrets.
+
+Task planning does not itself run commands. Agent execution remains subject to the backend's risk, approval, provider and Codex CLI checks. Hermes and Claude Code are not presented as runnable workers unless a separate supported adapter has been implemented.
+
 ## Interactive UI
 
 The holographic core can be dragged inside the stage. The model and speech-runtime tiles are also movable. Voice activation records speech until a pause, transcribes it locally, sends the text to the selected local model, speaks the answer with Windows TTS, and resumes listening until the session is stopped.
