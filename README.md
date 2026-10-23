@@ -44,6 +44,20 @@ Voice capture will report that local transcription needs setup until the package
 
 The main launcher sets `FRIDAY_PROJECT_ROOT` and `FRIDAY_PYTHON`, runs the Flutter desktop app, and lets the client start the local FastAPI sidecar. The sidecar reads repo-local `.env` settings. The app's Settings panel can also choose the repository folder and edit both connection URLs.
 
+## Prebuilt Windows package
+
+The Windows CI workflow builds a native release and attaches a portable package named `friday-windows-portable` to its GitHub Actions run. The package includes the Flutter executable, the Python backend, and setup/launch scripts. It does not include model weights, Python packages, or user credentials.
+
+After downloading and extracting that workflow artifact, open PowerShell in the extracted `friday-windows` folder and run:
+
+```powershell
+.\scripts\run_friday_portable.ps1 -InstallOllama
+```
+
+This route does **not** require Flutter to be installed on the target laptop because the native executable is already built. It requires Python 3.11+ and an internet connection for the initial Python/Whisper package and model downloads. Once packages and weights are cached, local voice inference and transcription can run offline. The `-InstallOllama` switch tries to install Ollama through winget when available; otherwise install Ollama from [its official Windows download](https://ollama.com/download/windows).
+
+The source ZIP is different: it contains the Flutter source code, not a compiled executable. To build from the source ZIP, install Flutter and the Windows C++ build prerequisites, then run `scripts/setup_friday_windows.ps1` followed by `scripts/run_friday_windows.ps1`.
+
 ## Development commands
 
 From the repository root:
