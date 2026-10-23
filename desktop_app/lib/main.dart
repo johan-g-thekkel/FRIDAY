@@ -563,6 +563,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       _settings = _settings.copyWith(
         apiBaseUrl: api,
         ollamaBaseUrl: ollamaController.text.trim(),
+        backendProjectPath: pathController.text.trim(),
         autoStartBackend: autoStart,
         autoResumeListening: autoResume,
         modelRoute: modelRoute,
