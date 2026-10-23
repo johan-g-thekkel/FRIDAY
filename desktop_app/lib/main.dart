@@ -221,9 +221,11 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       return;
     }
     try {
-      final hasPermission = await _recorder.hasPermission();
+      // The record plugin documents its permission-check API as unsupported on Windows.
+      // Windows manages microphone access through its privacy settings and Media Foundation.
+      final hasPermission = Platform.isWindows ? true : await _recorder.hasPermission();
       if (!hasPermission) {
-        _showMessage('Microphone permission was not granted by Windows.');
+        _showMessage('Microphone permission was not granted.');
         return;
       }
       _setStateSafe(() {
