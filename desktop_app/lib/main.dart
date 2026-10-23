@@ -1096,7 +1096,7 @@ class _ReadinessRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
         Icon(ready ? Icons.check_circle_rounded : Icons.error_outline_rounded, size: 15, color: ready ? const Color(0xFF73E8B9) : const Color(0xFFFFBF7B)),
         const SizedBox(width: 9),
-        SizedBox(width: 93, child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w650, color: Color(0xFFD3E0FA)))),
+        SizedBox(width: 93, child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFFD3E0FA)))),
         Expanded(child: Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: _muted))),
       ]);
 }
@@ -1111,7 +1111,7 @@ class _ErrorCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: const Color(0x22FF7E91), borderRadius: BorderRadius.circular(11), border: Border.all(color: const Color(0x66FF7E91))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [Icon(Icons.warning_amber_rounded, color: Color(0xFFFFA8B1), size: 16), SizedBox(width: 7), Text('Needs attention', style: TextStyle(fontWeight: FontWeight.w750, fontSize: 11, color: Color(0xFFFFBBC3)))]),
+          const Row(children: [Icon(Icons.warning_amber_rounded, color: Color(0xFFFFA8B1), size: 16), SizedBox(width: 7), Text('Needs attention', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFFFFBBC3)))]),
           const SizedBox(height: 8),
           SelectableText(message, style: const TextStyle(fontSize: 10, height: 1.5, color: Color(0xFFE9CFD5))),
           Align(alignment: Alignment.centerRight, child: TextButton(onPressed: onSettings, child: const Text('Fix connection', style: TextStyle(fontSize: 10)))),
