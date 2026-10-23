@@ -28,7 +28,19 @@ Then open PowerShell in the repository root and run:
 
 The first setup downloads the small `qwen2.5:1.5b` starter model and installs `faster-whisper`. This requires an internet connection once for packages/model downloads. Subsequent inference and transcription can run offline while the downloaded weights remain on the machine.
 
-To skip the starter model download, run `.`\scripts\setup_friday_windows.ps1 `-SkipModelDownload`. To skip the Whisper package, run `.`\scripts\setup_friday_windows.ps1 `-SkipOfflineSpeech`; voice capture will report that local transcription needs setup until the package is installed.
+To skip the starter model download, run the following command:
+
+```powershell
+.\scripts\setup_friday_windows.ps1 -SkipModelDownload
+```
+
+To skip the Whisper package, run:
+
+```powershell
+.\scripts\setup_friday_windows.ps1 -SkipOfflineSpeech
+```
+
+Voice capture will report that local transcription needs setup until the package is installed.
 
 The main launcher sets `FRIDAY_PROJECT_ROOT` and `FRIDAY_PYTHON`, runs the Flutter desktop app, and lets the client start the local FastAPI sidecar. The sidecar reads repo-local `.env` settings. The app's Settings panel can also choose the repository folder and edit both connection URLs.
 
