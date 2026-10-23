@@ -55,10 +55,40 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
-      - name: Upload Windows release
+      - name: Assemble portable release package
+        working-directory: ${{ github.workspace }}
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $stage = Join-Path $root "dist\\friday-windows"
+          $release = Join-Path $root "desktop_app\\build\\windows\\x64\\runner\\Release"
+          $releaseStage = Join-Path $stage "desktop_app\\build\\windows\\x64\\runner\\Release"
+
+          if (-not (Test-Path $release)) {
+            throw "Flutter release output was not found at $release"
+          }
+
+          New-Item -ItemType Directory -Path $releaseStage -Force | Out-Null
+          Copy-Item -Path (Join-Path $release "*") -Destination $releaseStage -Recurse -Force
+          Copy-Item -Path (Join-Path $root "backend") -Destination (Join-Path $stage "backend") -Recurse -Force
+          Copy-Item -Path (Join-Path $root "scripts") -Destination (Join-Path $stage "scripts") -Recurse -Force
+          Copy-Item -Path (Join-Path $root "requirements.txt") -Destination $stage -Force
+          Copy-Item -Path (Join-Path $root "requirements-voice.txt") -Destination $stage -Force
+          Copy-Item -Path (Join-Path $root ".env.example") -Destination $stage -Force
+          Copy-Item -Path (Join-Path $root "README.md") -Destination $stage -Force
+
+          $exampleProfiles = Join-Path $root "data\\model-profiles.example.json"
+          if (Test-Path $exampleProfiles) {
+            $stageData = Join-Path $stage "data"
+            New-Item -ItemType Directory -Path $stageData -Force | Out-Null
+            Copy-Item -Path $exampleProfiles -Destination $stageData -Force
+          }
+
+          Write-Host "Portable release package created at $stage"
+
+      - name: Upload portable Windows release
         uses: actions/upload-artifact@v4
         with:
-          name: friday-windows-release
-          path: desktop_app/build/windows/x64/runner/Release/
+          name: friday-windows-portable
+          path: dist/friday-windows/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
