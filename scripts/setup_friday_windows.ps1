@@ -89,7 +89,7 @@ Push-Location $desktop
 try {
     if (-not (Test-Path (Join-Path $desktop "windows\runner\main.cpp"))) {
         Write-Host "Generating the native Windows runner files..."
-        flutter create --platforms=windows .
+        flutter create --platforms=windows --no-pub .
     }
     Write-Host "Resolving Flutter packages..."
     flutter pub get
