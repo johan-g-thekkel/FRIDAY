@@ -1,73 +1,86 @@
-# FRIDAY — local voice assistant setup
+# FRIDAY — local Windows voice assistant
 
-FRIDAY's default page is a voice-first humanoid interface. The microphone is activated only after you click Activate FRIDAY. It records each spoken turn, sends that audio to FRIDAY's backend for local Whisper transcription, routes the text to a real model in Ollama, and speaks the model's answer using the browser/operating-system speech voice. There is no hidden hosted speech-recognition fallback.
+The supported desktop client is now a native Flutter application in `desktop_app/`. The FastAPI process is an API service, not an HTML site. It can be started by the Flutter app from the repository root or started manually for API testing.
 
-## Important: local laptop versus GitHub Codespaces
+## One-time Windows setup
 
-A Codespace is a remote Linux machine. If you install Ollama in a Codespace, the model runs on that remote machine, not on your Windows laptop. To keep inference on your laptop, download or clone this repository onto Windows, install Ollama on Windows, and run the FRIDAY backend locally.
+Prerequisites:
+- Python 3.11 or newer
+- Flutter stable
+- Visual Studio with the **Desktop development with C++** workload
+- Ollama for Windows
 
-The API and UI work in both environments. Microphone access requires a secure context; localhost and the HTTPS URL exposed by Codespaces normally qualify in current browsers.
+Official Flutter setup instructions: https://docs.flutter.dev/platform-integration/windows/setup
 
-## Option A — run all model inference on your Windows laptop
+From the repository root in PowerShell:
 
-1. Install Python 3.11 or newer and install [Ollama for Windows](https://ollama.com/download/windows).
-2. Open PowerShell in the repository folder.
-3. Run these commands:
+    .\scripts\setup_friday_windows.ps1 -InstallOllama
+    .\scripts\run_friday_windows.ps1
+
+The setup script creates the repository `.venv`, installs the API dependencies and optional `faster-whisper` package, ensures the small `qwen2.5:1.5b` Ollama model is downloaded, generates the Windows runner files, and runs `flutter pub get`. A first setup requires internet access to download packages and model weights. After these downloads are cached, voice inference and transcription can run without cloud inference services.
+
+The `-InstallOllama` switch asks Windows Package Manager to install Ollama if it is missing. If winget is unavailable, install Ollama from https://ollama.com/download/windows and rerun setup.
+
+To skip the local model pull, use:
+
+    .\scripts\setup_friday_windows.ps1 -SkipModelDownload
+
+To skip optional offline Whisper installation, use:
+
+    .\scripts\setup_friday_windows.ps1 -SkipOfflineSpeech
+
+The app can still open without these optional pieces, but it reports exactly which local component is missing rather than acting like a model is connected.
+
+## Start the application
+
+    .\scripts\run_friday_windows.ps1
+
+The launcher sets `FRIDAY_PROJECT_ROOT` and `FRIDAY_PYTHON`, runs the Flutter desktop application, and lets the client launch the Python backend. The Flutter app opens its connection settings from the tune icon. You can set the API URL, Ollama URL, repository path, local model route, language and whether listening resumes after each spoken answer.
+
+The connection configuration is saved to `connection.json` in the Windows application-support directory. The Diagnostics screen displays its exact path.
+
+## Developer commands
+
+From PowerShell in the repository root:
 
     python -m venv .venv
     .\.venv\Scripts\Activate.ps1
-    python -m pip install --upgrade pip
     python -m pip install -r requirements.txt
-    .\scripts\setup_local_runtime.ps1
+    python -m pip install -r requirements-voice.txt
 
-    The setup script pulls qwen2.5:1.5b by default. You can use another installed model by setting the FRIDAY_OLLAMA_MODEL environment variable before running the script. The 1.5B model is a small starting point for low-memory systems; bigger models can be smarter but need more RAM and run slower.
-4. Run the API and UI:
+Then in the Flutter project:
 
-    python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+    cd desktop_app
+    flutter create --platforms=windows .
+    flutter pub get
+    dart format lib test
+    flutter analyze
+    flutter test
+    flutter run -d windows
+    flutter build windows --release
 
-5. Open http://127.0.0.1:8000. Allow microphone access and click Activate FRIDAY. The advanced console is at http://127.0.0.1:8000/console.
+The build output is under `desktop_app/build/windows/x64/runner/Release/`.
 
-On Windows, FRIDAY enables a small explicit local action allowlist by default: say “open Calculator”, “open Notepad”, “open File Explorer”, “open Paint”, or “open browser”. It can also open a spoken HTTP/HTTPS URL in your default browser. These commands only work when the backend runs on the laptop; arbitrary shell commands are not enabled. To disable all local app launches, set ENABLE_LOCAL_DESKTOP_ACTIONS=false in the environment before starting FRIDAY.
+## Local voice flow
 
-## Option B — run inside GitHub Codespaces
+1. Click **Activate FRIDAY**. Microphone permission is handled by Windows privacy settings.
+2. Speak a phrase and pause. The client records a temporary WAV utterance.
+3. The local API uses `faster-whisper` to transcribe the clip, then calls the selected model via `/api/v1/chat`.
+4. Automatic routing only uses Ollama models actually installed in the configured runtime. It does not silently fall back to cloud providers.
+5. The answer is spoken using the installed Windows voice and FRIDAY resumes listening until you stop the session.
 
-Open a terminal in the Codespace and run:
+Whisper weights are downloaded once by faster-whisper on first use and then cached. The temporary recording is removed after the turn. Browser/Web Speech API is not used by the native client.
 
-    python -m venv .venv
-    source .venv/bin/activate
-    python -m pip install --upgrade pip
-    python -m pip install -r requirements.txt
-    bash scripts/setup_local_runtime.sh --voice
-    python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+## API-only routes
 
-In the Ports tab, open port 8000. This downloads the model inside the Codespace; it does not use the laptop's local Ollama process. The setup step downloads Ollama's small qwen2.5:1.5b model and installs optional local Whisper transcription. The lightweight tiny Whisper model weights are fetched on first transcription, then cached in that runtime.
+- `GET /` — JSON metadata for the native app.
+- `GET /health` — service health.
+- `GET /api/v1/voice/status` — local model and speech readiness.
+- `GET /api/v1/models` — actually installed Ollama model routes and optional configured routes.
+- `POST /api/v1/voice/transcribe` — local speech transcription.
+- `POST /api/v1/chat` — local model inference or an exact allowlisted desktop action.
+- `GET /docs` — FastAPI API explorer.
 
-If the setup script needs to be rerun after a Codespace restart, repeat the model server setup step if Ollama did not remain running. If the local model is missing, check with ollama list and run ollama pull qwen2.5:1.5b.
+The task planning, history, bot, skill and guarded Codex endpoints remain in the backend, but their old HTML dashboard was removed and their complete native Flutter views are not yet ported. Use the API explorer for those endpoints until the corresponding native views are implemented.
 
-## Checks
-
-- Backend: /health
-- Local model and offline speech readiness: /api/v1/voice/status
-- Installed and configured model routes: /api/v1/models
-- Interactive API docs: /docs
-- Advanced agent / task console: /console
-
-The voice UI shows whether Ollama and Whisper are ready. Automatic voice chat is local-only: if no Ollama model is installed, FRIDAY explains how to install one and does not silently route your voice to a cloud provider. It does not fake an answer: if the model is missing, offline transcription is not installed, or a selected route fails, it displays the actual failure.
-
-## Add additional local models
-
-Use Ollama to download a model, then refresh FRIDAY:
-
-    ollama pull qwen2.5-coder:1.5b
-    ollama pull llama3.2:1b
-    ollama list
-
-Only tags actually returned by Ollama are offered as local model routes. Use ollama list to see exact installed tags. Model sizes and capabilities differ; verify the exact model in the [Ollama library](https://ollama.com/library) before downloading it.
-
-## Voice runtime behavior
-
-- Speech recognition: optional faster-whisper, installed from requirements-voice.txt, running locally with CPU int8 inference. The selected Whisper model (tiny by default for memory-constrained machines) downloads on first use if not already cached.
-- Speech output: browser/OS speechSynthesis, not ElevenLabs. This works without a hosted TTS key when the browser has an installed system voice.
-- Conversation inference: automatic voice mode is strictly local Ollama. If no model is installed, FRIDAY stops with setup instructions instead of hidden cloud fallback. Cloud routes remain optional and must be selected explicitly through the advanced API.
-- Skills and agents: the separate operator console retains reviewed skills and guarded Codex coding worktrees. Agent inventories are not proof of a working integration. FRIDAY's local voice actions are deliberately limited to explicit allowlisted app launches and opening a URL. They do not mean arbitrary shell access, unrestricted desktop control, or automatic control of other applications.
-- API secrets belong in .env or environment secrets only. Never commit secrets or paste them into chat.
+FRIDAY currently has an explicit allowlist for opening certain desktop apps and URLs; it does not enable arbitrary shell execution or unrestricted device/desktop control. Hermes Agent and Claude Code require separate working adapters and are not treated as connected just because they are listed in the integration inventory.
