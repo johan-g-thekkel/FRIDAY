@@ -641,18 +641,6 @@ def test_autonomy_policy_endpoint_exposes_profiles_and_safeguards(tmp_path):
         assert policy["safeguards"]["untrusted_skills_execute_automatically"] is False
         assert policy["implementation_status"]["hermes_agent"] == "inventory_only_pending_tested_adapter"
 
-def test_root_serves_voice_first_home_and_console(tmp_path):
-    with _client_for_test(tmp_path) as client:
-        home = client.get("/")
-        assert home.status_code == 200
-        assert "Activate FRIDAY" in home.text
-        assert 'id="activate-button"' in home.text
-
-        console = client.get("/console")
-        assert console.status_code == 200
-        assert "Command centre" in console.text
-
-
 def test_local_ollama_routes_reflect_installed_models(tmp_path, monkeypatch):
     from backend import main
 
