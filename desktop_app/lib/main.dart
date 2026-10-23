@@ -184,27 +184,6 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _refreshRuntime() async {
-    if (_backend == null) return;
-    try {
-      await _backend!.health();
-      final status = await _backend!.voiceStatus();
-      final routes = await _backend!.models();
-      _setStateSafe(() {
-        _backendReady = true;
-        _voiceStatus = status;
-        _routes = routes;
-        _connectionLabel = 'FRIDAY API connected';
-        _lastError = null;
-      });
-    } catch (error) {
-      _setStateSafe(() {
-        _backendReady = false;
-        _connectionLabel = 'Backend unavailable';
-        _lastError = error.toString();
-      });
-    }
-  }
 
   Future<void> _startVoiceSession() async {
     if (_voiceSession) {
@@ -433,7 +412,12 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
       barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(builder: (context, setDialogState) {
-          final routeIds = _routes.map((r) => r['id']?.toString()).whereType<String>().toSet();
+          final availableRoutes = _routes.isEmpty
+              ? <Map<String, dynamic>>[
+                  {'id': 'auto', 'name': 'Automatic (local-only)', 'available': true},
+                ]
+              : _routes;
+          final routeIds = availableRoutes.map((r) => r['id']?.toString()).whereType<String>().toSet();
           if (!routeIds.contains(modelRoute)) modelRoute = 'auto';
           return AlertDialog(
             backgroundColor: const Color(0xFF111A30),
@@ -474,7 +458,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
                       value: routeIds.contains(modelRoute) ? modelRoute : 'auto',
                       isExpanded: true,
                       decoration: const InputDecoration(prefixIcon: Icon(Icons.hub_outlined)),
-                      items: _routes.map((route) {
+                      items: availableRoutes.map((route) {
                         final id = route['id']?.toString() ?? 'auto';
                         final name = route['name']?.toString() ?? id;
                         final ready = route['available'] == true;
@@ -707,7 +691,7 @@ class _FridayHomeState extends State<FridayHome> with TickerProviderStateMixin {
         const SizedBox(width: 10),
         IconButton(
           tooltip: 'Refresh connections',
-          onPressed: _booting ? null : _initialize,
+          onPressed: (_booting || _voiceSession || _processingTurn) ? null : _initialize,
           icon: const Icon(Icons.sync_rounded),
         ),
         IconButton(
